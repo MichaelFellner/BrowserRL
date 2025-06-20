@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fabric.js Green Box Movement</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  <style>
+    canvas { border: 1px solid #555; }
+    #controls { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Draw White Areas and Move the Green Box</h2>
+  <canvas id="c" width="1000" height="600"></canvas>
+
+  <div id="controls">
+    <label>Stroke Width:
+      <input type="range" id="strokeWidth" min="1" max="30" value="5">
+    </label>
+    <button onclick="moveGreenBox()">Move Green Box</button>
+    <button onclick="sendCanvasToPython()">Send to Python</button>
+
+  </div>
+
+  <script>
+    const canvas = new fabric.Canvas('c', {
+      isDrawingMode: true,
+      backgroundColor: 'black',
+    });
+
+    const W = 1000, H = 600;
+    const R = 50;
+    const BOX = 20;
+    const step = 20;
+
+    // Static shapes
+    const bottomLeft = new fabric.Circle({
+      left: R + 10 - R,
+      top: H - R - 10 - R,
+      radius: R,
+      fill: 'white',
+      selectable: false,
+      evented: false,
+    });
+
+    const topRight = new fabric.Circle({
+      left: W - R - 10 - R,
+      top: R + 10 - R,
+      radius: R,
+      fill: 'white',
+      selectable: false,
+      evented: false,
+    });
+
+    const redBox = new fabric.Rect({
+      left: W - R - 10 - BOX / 2,
+      top: R + 10 - BOX / 2,
+      width: BOX,
+      height: BOX,
+      fill: 'red',
+      selectable: false,
+      evented: false,
+    });
+
+    canvas.add(bottomLeft, topRight, redBox);
+
+    // Green box
+    const greenBox = new fabric.Rect({
+      left: R + 10 - BOX / 2,
+      top: H - R - 10 - BOX / 2,
+      width: BOX,
+      height: BOX,
+      fill: 'green',
+      selectable: false,
+      evented: false,
+    });
+
+    canvas.add(greenBox);
+    canvas.renderAll();
+
+    // Always keep green box on top after drawing
+    canvas.on('path:created', function () {
+      canvas.bringToFront(greenBox);
+    });
+
+    // Brush settings
+    const brush = canvas.freeDrawingBrush;
+    brush.color = 'white';
+    brush.width = parseInt(document.getElementById("strokeWidth").value);
+    document.getElementById("strokeWidth").addEventListener("input", e => {
+      brush.width = parseInt(e.target.value);
+    });
+
+    async function isWhiteUnderBox(x, y) {
+      greenBox.visible = false;
+      canvas.requestRenderAll();
+
+      const dataURL = canvas.toDataURL({ format: 'png' });
+      const img = new Image();
+      img.src = dataURL;
+      await new Promise(r => img.onload = r);
+
+      const tmp = document.createElement('canvas');
+      tmp.width = BOX;
+      tmp.height = BOX;
+      const ctx = tmp.getContext('2d');
+      ctx.drawImage(img, -x, -y);
+
+      greenBox.visible = true;
+      canvas.requestRenderAll();
+
+      const data = ctx.getImageData(0, 0, BOX, BOX).data;
+      const corners = [
+        { cx: 0, cy: 0 },
+        { cx: BOX - 1, cy: 0 },
+        { cx: 0, cy: BOX - 1 },
+        { cx: BOX - 1, cy: BOX - 1 }
+      ];
+
+      for (let { cx, cy } of corners) {
+        const i = (cy * BOX + cx) * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+        if (!(r > 240 && g > 240 && b > 240 && a > 200)) return false;
+      }
+      return true;
+    }
+
+    async function moveGreenBoxOnce() {
+      const tries = 50;
+      for (let i = 0; i < tries; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const dx = Math.round(step * Math.cos(angle));
+        const dy = Math.round(step * Math.sin(angle));
+        const nx = greenBox.left + dx;
+        const ny = greenBox.top + dy;
+
+        if (
+          nx >= 0 && nx + BOX < W &&
+          ny >= 0 && ny + BOX < H &&
+          await isWhiteUnderBox(nx, ny)
+        ) {
+          greenBox.set({ left: nx, top: ny });
+          canvas.renderAll();
+          return true;
+        }
+      }
+      console.warn("⚠ No valid white area found.");
+      return false;
+    }
+
+    async function moveGreenBox() {
+      console.log("Starting 100 moves...");
+      for (let i = 0; i < 100; i++) {
+        const moved = await moveGreenBoxOnce();
+        if (!moved) break;
+        await new Promise(r => setTimeout(r, 1));  // 50ms delay
+      }
+      console.log("✅ Finished moving.");
+    }
+async function sendCanvasToPython() {
+  const dataURL = canvas.toDataURL("image/png");
+
+  const response = await fetch("http://localhost:8000/upload_image", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ image: dataURL })
+  });
+
+  const result = await response.json();
+  console.log("Response from Python:", result);
+}
+
+  </script>
+</body>
+</html>
