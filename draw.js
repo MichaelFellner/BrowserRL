@@ -36,24 +36,21 @@ const canvas = new fabric.Canvas('c', {
     evented: false,
   });
   
-  function getGoalCenter() {
-    return {
-      x: redBox.left + redBox.width / 2,
-      y: redBox.top + redBox.height / 2
-    };
-  }
-  
   canvas.add(bottomLeft, topRight, redBox);
   
+  const greenStartX = Math.round((R + 10) / BOX) * BOX;
+  const greenStartY = Math.round((H - R - 10) / BOX) * BOX;
+  
   const greenBox = new fabric.Rect({
-    left: R + 10 - BOX / 2,
-    top: H - R - 10 - BOX / 2,
+    left: greenStartX - BOX / 2,
+    top: greenStartY - BOX / 2,
     width: BOX,
     height: BOX,
     fill: 'green',
     selectable: false,
     evented: false,
   });
+  
   
   canvas.add(greenBox);
   canvas.renderAll();
@@ -70,6 +67,13 @@ const canvas = new fabric.Canvas('c', {
   });
   
   let trajectory = [];
+  
+  function getGoalCenter() {
+    return {
+      x: redBox.left + redBox.width / 2,
+      y: redBox.top + redBox.height / 2
+    };
+  }
   
   async function isWhiteUnderBox(x, y) {
     greenBox.visible = false;
@@ -117,8 +121,8 @@ const canvas = new fabric.Canvas('c', {
     const ny = greenBox.top + dy;
   
     if (
-      nx >= 0 && nx + BOX < W &&
-      ny >= 0 && ny + BOX < H &&
+      nx >= 0 && nx + BOX <= W &&
+      ny >= 0 && ny + BOX <= H &&
       await isWhiteUnderBox(nx, ny)
     ) {
       greenBox.set({ left: nx, top: ny });
@@ -133,90 +137,126 @@ const canvas = new fabric.Canvas('c', {
       console.log(`🎯 Distance to goal: ${dist} pixels`);
   
       trajectory.push({ x: centerX, y: centerY, action });
+      console.log("📥 Recorded move:", { x: centerX, y: centerY, action });
     } else {
       console.warn("❌ Invalid move or hit black area.");
     }
   }
   
-  async function sendCanvasToPython() {
+  async function sendTrajectoryToPython() {
     const dataURL = canvas.toDataURL("image/png");
   
-    const response = await fetch("http://localhost:8000/upload_image", {
+    const response = await fetch("http://localhost:8000/upload_trajectory", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ image: dataURL })
+      body: JSON.stringify({
+        image: dataURL,
+        trajectory: trajectory
+      })
     });
   
     const result = await response.json();
-    console.log("🖼️ Response from Python:", result);
+    console.log("📤 Trajectory + Image sent:", result);
   }
   
-  async function sendTrajectory() {
-    if (trajectory.length === 0) {
-      alert("No moves made.");
-      return;
-    }
-  
-    const response = await fetch("http://localhost:8000/upload_trajectory", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trajectory })
-    });
-  
-    const result = await response.json();
-    console.log("📤 Trajectory sent:", result);
-  }
-  
-  async function runPlanningCheck() {
+  async function testPlan() {
     if (trajectory.length === 0) {
       alert("No trajectory recorded.");
       return;
     }
   
-    const start = trajectory[0];
-    const actions = trajectory.map(step => step.action);
-  
-    const res = await fetch("http://localhost:8000/run_planning", {
+    const response = await fetch("http://localhost:8000/test_plan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        start_x: start.x,
-        start_y: start.y,
-        actions: actions
-      })
+      body: JSON.stringify({ trajectory: trajectory })
     });
   
-    const data = await res.json();
-    console.log("🔁 Planning replay result:", data);
-    alert(`Final position: (${data.end})\nDistance to goal: ${Math.round(data.distance_to_goal)}`);
-  }
+    const result = await response.json();
+    console.log("🧪 Planned final position:", result);
   
-  async function testPlan() {
-    const res = await fetch("http://localhost:8000/plan_path");
-    const data = await res.json();
-  
-    const actions = data.actions;
-    const [startX, startY] = data.start;
-    const [goalX, goalY] = data.goal;
-  
-    let x = startX;
-    let y = startY;
-  
-    for (const action of actions) {
-      const [dx, dy] = {
-        0: [0, -BOX], // up
-        1: [0, BOX],  // down
-        2: [-BOX, 0], // left
-        3: [BOX, 0],  // right
-      }[action];
-  
-      x += dx;
-      y += dy;
+    if (result.error) {
+      alert("❌ " + result.error);
+      return;
     }
   
-    const dist = Math.sqrt((x - goalX) ** 2 + (y - goalY) ** 2);
-    alert(`✅ Final position: (${x}, ${y})\n🎯 Distance to goal: ${dist.toFixed(2)} pixels`);
+    alert(`✅ Final position: (${result.final_x}, ${result.final_y})\n🎯 Distance to goal: ${result.distance_to_goal.toFixed(2)} pixels`);
+  }
+  
+  let valuePolicy = {};
+  
+  async function runValueIteration() {
+    const dataURL = canvas.toDataURL("image/png");
+  
+    // Upload image first
+    const res = await fetch("http://localhost:8000/upload_image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: dataURL })
+    });
+  
+    const result = await res.json();
+    console.log("🖼️ Image uploaded:", result);
+  
+    // Run value iteration
+    const viRes = await fetch("http://localhost:8000/run_value_iteration");
+    const viData = await viRes.json();
+  
+    if (!viData.policy) {
+      alert("❌ Value iteration returned no policy.");
+      return;
+    }
+  
+    valuePolicy = viData.policy;
+    console.log("✅ Value Iteration complete. Policy loaded.");
+    alert("Value Iteration done! Ready to follow policy.");
+  }
+  
+  async function followValuePolicy() {
+    if (!valuePolicy || Object.keys(valuePolicy).length === 0) {
+      alert("Please run value iteration first.");
+      return;
+    }
+  
+    let steps = 0;
+    while (steps < 1000) {
+      // Use the center position key exactly like the Python policy keys
+      const cx = Math.round((greenBox.left + BOX / 2) / BOX) * BOX;
+      const cy = Math.round((greenBox.top + BOX / 2) / BOX) * BOX;
+      const key = `${cx},${cy}`;
+      console.log("🎯 Attempting lookup for:", key);
+  
+      const action = valuePolicy[key];
+      if (action === undefined) {
+        console.warn("❌ No policy for this position:", key);
+        break;
+      }
+  
+      // Translate the action into a movement (dx, dy)
+      const [dx, dy] = {
+        0: [0, -BOX],   // up
+        1: [0,  BOX],   // down
+        2: [-BOX, 0],   // left
+        3: [ BOX, 0]    // right
+      }[action];
+  
+      // Move the green box according to the policy action
+      const nx = greenBox.left + dx;
+      const ny = greenBox.top + dy;
+      greenBox.set({ left: nx, top: ny });
+      canvas.renderAll();
+  
+      // Check if goal is reached (distance from center < box size)
+      const goal = getGoalCenter();
+      const dist = Math.sqrt((nx + BOX/2 - goal.x) ** 2 + (ny + BOX/2 - goal.y) ** 2);
+      if (dist < BOX+1) {
+        console.log("🎯 Reached goal.");
+        break;
+      }
+  
+      await new Promise(r => setTimeout(r, 100));  // small delay for visualization
+      steps++;
+    }
   }
   

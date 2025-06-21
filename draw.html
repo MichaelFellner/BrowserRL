@@ -5,28 +5,40 @@
   <title>Green Box Controller</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
   <style>
-    canvas { border: 1px solid #555; }
-    #controls { margin-top: 10px; }
-    button { margin: 4px; padding: 6px 12px; }
+    canvas {
+      border: 1px solid #555;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+    button {
+      margin: 4px;
+      padding: 6px 12px;
+      font-size: 16px;
+    }
+    #strokeWidth {
+      width: 150px;
+    }
   </style>
 </head>
 <body>
-  <h2>Move the Green Box</h2>
+  <h2>Green Box Navigation</h2>
   <canvas id="c" width="1000" height="600"></canvas>
 
   <div id="controls">
     <label>Stroke Width:
-      <input type="range" id="strokeWidth" min="1" max="30" value="5">
+      <input type="range" id="strokeWidth" min="40" max="100" value="5">
     </label>
     <br><br>
     <button onclick="manualMove(0)">↑ Up</button>
     <button onclick="manualMove(1)">↓ Down</button>
     <button onclick="manualMove(2)">← Left</button>
     <button onclick="manualMove(3)">→ Right</button>
-    <br>
-    <button onclick="sendTrajectory()">📤 Send Trajectory to Python</button>
-    <button onclick="runPlanningCheck()">Test Planning Replay</button>
-    <button onclick="testPlan()">Test Plan</button>
+    <br><br>
+
+<button onclick="runValueIteration()">Run Value Iteration</button>
+<button onclick="followValuePolicy()">Follow Optimal Policy</button>
+
   </div>
 
   <script src="draw.js"></script>
