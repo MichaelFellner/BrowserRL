@@ -1,4 +1,4 @@
-const BACKEND_URL = "https://browserrl.onrender.com";
+const BACKEND_URL = " https://61f1-2600-4040-aeec-7f00-8055-2043-5b71-2fad.ngrok-free.app"
 
 const canvas = new fabric.Canvas('c', {
   isDrawingMode: true,
