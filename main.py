@@ -204,3 +204,8 @@ async def run_value_iteration(
         "policy": policy,
         "iterations": iteration_count
     }
+
+@app.get("/")
+async def root():
+    return {"message": "FastAPI is running on Render!"}
+
