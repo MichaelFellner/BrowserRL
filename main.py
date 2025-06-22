@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
@@ -184,22 +184,23 @@ async def test_plan(payload: Dict):
     }
 
 @app.get("/run_value_iteration")
-async def run_value_iteration():
+async def run_value_iteration(
+    gamma: float = Query(0.99, ge=0.0, le=1.0),
+    threshold: float = Query(1e-8, gt=0.0)
+):
     state = parse_image_to_state()
     goal = state["goal_pos"]
     walkable = state["walkable"]
 
-    vi = ValueIteration(walkable, goal)
+    vi = ValueIteration(walkable, goal, gamma=gamma, threshold=threshold)
     vi.iterate()
-    vi.policy[(60, 540)] = 3
-
+    vi.policy.setdefault((state["agent_pos"]), 3)
 
     policy = vi.get_policy()
+    iteration_count = vi.get_iteration_count()
 
-
-    print("✅ Policy keys available:")
-    for k in policy.keys():
-        print(k)
-
-    return { "policy": policy }
-
+    print(f"✅ ValueIteration done (γ={gamma}, ε={threshold}). Iterations: {iteration_count}, Policy size: {len(policy)}")
+    return {
+        "policy": policy,
+        "iterations": iteration_count
+    }

@@ -66,6 +66,9 @@ const canvas = new fabric.Canvas('c', {
     brush.width = parseInt(e.target.value);
   });
   
+  let iterationDisplay = document.getElementById("iterationCount");
+
+
   let trajectory = [];
   
   function getGoalCenter() {
@@ -187,31 +190,39 @@ const canvas = new fabric.Canvas('c', {
   let valuePolicy = {};
   
   async function runValueIteration() {
+    // 1) upload current image
     const dataURL = canvas.toDataURL("image/png");
-  
-    // Upload image first
-    const res = await fetch("http://localhost:8000/upload_image", {
+    await fetch("http://localhost:8000/upload_image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: dataURL })
     });
   
-    const result = await res.json();
-    console.log("🖼️ Image uploaded:", result);
+    // 2) read user inputs
+    const gammaInput = parseFloat(document.getElementById("gamma").value);
+    const epsInput  = parseFloat(document.getElementById("threshold").value);
+    const gamma     = isNaN(gammaInput)    ? undefined : gammaInput;
+    const threshold = isNaN(epsInput)      ? undefined : epsInput;
   
-    // Run value iteration
-    const viRes = await fetch("http://localhost:8000/run_value_iteration");
+    // 3) build URL with query params
+    let url = new URL("http://localhost:8000/run_value_iteration");
+    if (gamma     !== undefined) url.searchParams.set("gamma",     gamma);
+    if (threshold !== undefined) url.searchParams.set("threshold", threshold);
+  
+    // 4) call endpoint
+    const viRes = await fetch(url);
     const viData = await viRes.json();
-  
     if (!viData.policy) {
       alert("❌ Value iteration returned no policy.");
       return;
     }
-  
     valuePolicy = viData.policy;
-    console.log("✅ Value Iteration complete. Policy loaded.");
+    console.log("✅ Policy loaded:", valuePolicy);
+    iterationDisplay.innerText = "Iterations: " + viData.iterations;
+
     alert("Value Iteration done! Ready to follow policy.");
   }
+  
   
   async function followValuePolicy() {
     if (!valuePolicy || Object.keys(valuePolicy).length === 0) {
@@ -258,5 +269,13 @@ const canvas = new fabric.Canvas('c', {
       await new Promise(r => setTimeout(r, 100));  // small delay for visualization
       steps++;
     }
+  }
+  
+  function resetGreenBox() {
+    greenBox.set({
+      left: greenStartX - BOX / 2,
+      top: greenStartY - BOX / 2
+    });
+    canvas.renderAll();
   }
   

@@ -19,6 +19,8 @@ class ValueIteration:
         self.box_size = box_size
         self.values = defaultdict(float)  # State-value function: V(x,y)
         self.policy = {}                  # Optimal policy: maps (x,y) -> action
+        self.iteration_count = 0
+
 
     def is_valid(self, x: int, y: int) -> bool:
         """Check if the (x, y) position is within bounds and not a black (illegal) pixel."""
@@ -26,8 +28,10 @@ class ValueIteration:
         return 0 <= x < w and 0 <= y < h and self.walkable[y, x]
 
     def iterate(self):
+        self.iteration_count = 0  # Reset count
         # Iterate value function until convergence
         while True:
+            self.iteration_count += 1
             delta = 0
             new_values = defaultdict(float)
 
@@ -84,6 +88,10 @@ class ValueIteration:
             self.values = new_values
             if delta < self.threshold:
                 break
+            
+    def get_iteration_count(self):
+      return self.iteration_count
+
 
     def get_policy(self):
         """
