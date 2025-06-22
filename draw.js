@@ -51,7 +51,6 @@ const canvas = new fabric.Canvas('c', {
     evented: false,
   });
   
-  
   canvas.add(greenBox);
   canvas.renderAll();
   
@@ -67,8 +66,6 @@ const canvas = new fabric.Canvas('c', {
   });
   
   let iterationDisplay = document.getElementById("iterationCount");
-
-
   let trajectory = [];
   
   function getGoalCenter() {
@@ -149,11 +146,9 @@ const canvas = new fabric.Canvas('c', {
   async function sendTrajectoryToPython() {
     const dataURL = canvas.toDataURL("image/png");
   
-    const response = await fetch("http://localhost:8000/upload_trajectory", {
+    const response = await fetch(`${window.location.origin}/upload_trajectory`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         image: dataURL,
         trajectory: trajectory
@@ -170,7 +165,7 @@ const canvas = new fabric.Canvas('c', {
       return;
     }
   
-    const response = await fetch("http://localhost:8000/test_plan", {
+    const response = await fetch(`${window.location.origin}/test_plan`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ trajectory: trajectory })
@@ -190,39 +185,34 @@ const canvas = new fabric.Canvas('c', {
   let valuePolicy = {};
   
   async function runValueIteration() {
-    // 1) upload current image
     const dataURL = canvas.toDataURL("image/png");
-    await fetch("http://localhost:8000/upload_image", {
+  
+    await fetch(`${window.location.origin}/upload_image`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: dataURL })
     });
   
-    // 2) read user inputs
     const gammaInput = parseFloat(document.getElementById("gamma").value);
-    const epsInput  = parseFloat(document.getElementById("threshold").value);
-    const gamma     = isNaN(gammaInput)    ? undefined : gammaInput;
-    const threshold = isNaN(epsInput)      ? undefined : epsInput;
+    const epsInput = parseFloat(document.getElementById("threshold").value);
+    const gamma = isNaN(gammaInput) ? undefined : gammaInput;
+    const threshold = isNaN(epsInput) ? undefined : epsInput;
   
-    // 3) build URL with query params
-    let url = new URL("http://localhost:8000/run_value_iteration");
-    if (gamma     !== undefined) url.searchParams.set("gamma",     gamma);
+    let url = new URL(`${window.location.origin}/run_value_iteration`);
+    if (gamma !== undefined) url.searchParams.set("gamma", gamma);
     if (threshold !== undefined) url.searchParams.set("threshold", threshold);
   
-    // 4) call endpoint
     const viRes = await fetch(url);
     const viData = await viRes.json();
     if (!viData.policy) {
       alert("❌ Value iteration returned no policy.");
       return;
     }
+  
     valuePolicy = viData.policy;
-    console.log("✅ Policy loaded:", valuePolicy);
     iterationDisplay.innerText = "Iterations: " + viData.iterations;
-
     alert("Value Iteration done! Ready to follow policy.");
   }
-  
   
   async function followValuePolicy() {
     if (!valuePolicy || Object.keys(valuePolicy).length === 0) {
@@ -232,7 +222,6 @@ const canvas = new fabric.Canvas('c', {
   
     let steps = 0;
     while (steps < 1000) {
-      // Use the center position key exactly like the Python policy keys
       const cx = Math.round((greenBox.left + BOX / 2) / BOX) * BOX;
       const cy = Math.round((greenBox.top + BOX / 2) / BOX) * BOX;
       const key = `${cx},${cy}`;
@@ -244,29 +233,26 @@ const canvas = new fabric.Canvas('c', {
         break;
       }
   
-      // Translate the action into a movement (dx, dy)
       const [dx, dy] = {
-        0: [0, -BOX],   // up
-        1: [0,  BOX],   // down
-        2: [-BOX, 0],   // left
-        3: [ BOX, 0]    // right
+        0: [0, -BOX],
+        1: [0, BOX],
+        2: [-BOX, 0],
+        3: [BOX, 0]
       }[action];
   
-      // Move the green box according to the policy action
       const nx = greenBox.left + dx;
       const ny = greenBox.top + dy;
       greenBox.set({ left: nx, top: ny });
       canvas.renderAll();
   
-      // Check if goal is reached (distance from center < box size)
       const goal = getGoalCenter();
-      const dist = Math.sqrt((nx + BOX/2 - goal.x) ** 2 + (ny + BOX/2 - goal.y) ** 2);
-      if (dist < BOX+1) {
+      const dist = Math.sqrt((nx + BOX / 2 - goal.x) ** 2 + (ny + BOX / 2 - goal.y) ** 2);
+      if (dist < BOX + 1) {
         console.log("🎯 Reached goal.");
         break;
       }
   
-      await new Promise(r => setTimeout(r, 100));  // small delay for visualization
+      await new Promise(r => setTimeout(r, 100));
       steps++;
     }
   }
