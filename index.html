@@ -17,7 +17,7 @@
   <canvas id="c" width="1000" height="600"></canvas>
 
   <div id="controls">
-    <!-- stroke‐width slider for drawing -->
+    <!-- stroke-width slider for drawing -->
     <label>Stroke Width:
       <input type="range" id="strokeWidth" min="40" max="100" value="5">
     </label>
@@ -31,21 +31,20 @@
     <br><br>
 
     <!-- γ and ε inputs -->
-    <label>γ:
+    <label>discount rate:
       <input id="gamma" type="number" step="0.01" placeholder="0.99">
     </label>
-    <label>ε:
-      <input id="threshold" type="number" step="1e-6" placeholder="1e-8">
+    <label>convergence threshold:
+      <input id="threshold" type="number" step="1e-6" placeholder="1e-4">
     </label>
     <br><br>
 
     <!-- RL buttons -->
-    <button onclick="runValueIteration()">Run Value Iteration</button>
+    <button onclick="runValueIterationClientSide()">Run Value Iteration</button>
     <button onclick="followValuePolicy()">Follow Optimal Policy</button>
   </div>
   <div id="iterationCount" style="margin-top: 10px; font-weight: bold;">Iterations: -</div>
   <button onclick="resetGreenBox()">Reset Green Box</button>
-
 
   <script src="draw.js"></script>
 </body>
