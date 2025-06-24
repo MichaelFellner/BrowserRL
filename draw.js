@@ -1,6 +1,7 @@
 // All logic is handled client-side (no backend required)
 window.runValueIterationClientSide = runValueIterationClientSide;
 
+
 const canvas = new fabric.Canvas('c', {
   isDrawingMode: true,
   backgroundColor: 'black',
@@ -16,6 +17,7 @@ let livePolicyMap = null;
 let liveArrowMap = null;
 let liveIterationCount = 0;
 
+const arrowMap = new Map(); // Ensures it's always available
 
 // Define initial white areas at start and goal positions
 const bottomLeft = new fabric.Circle({
@@ -62,9 +64,15 @@ canvas.renderAll();
 
 // Keep goal and agent on top of any drawn paths
 canvas.on('path:created', () => {
-  canvas.bringToFront(redBox);
-  canvas.bringToFront(greenBox);
-});
+    canvas.bringToFront(redBox);
+    canvas.bringToFront(greenBox);
+    if (liveArrowMap) {
+      for (const arrow of liveArrowMap.values()) {
+        canvas.bringToFront(arrow);
+      }
+    }
+  });
+  
 
 // Configure drawing brush for obstacles (white paths)
 const brush = canvas.freeDrawingBrush;
@@ -84,6 +92,73 @@ function getGoalCenter() {
     y: redBox.top + redBox.height / 2
   };
 }
+
+function placeArrow(x, y, action, arrowMap) {
+    // Remove existing arrow at this location, if any
+    const key = `${x},${y}`;
+    if (arrowMap.has(key)) {
+      canvas.remove(arrowMap.get(key));
+    }
+  
+    // Draw a simple arrow as a triangle
+    const size = 10;
+    let triangle;
+    switch (action) {
+      case 0: // up
+        triangle = new fabric.Triangle({
+          left: x + BOX / 2,
+          top: y,
+          width: size,
+          height: size,
+          fill: 'blue',
+          angle: 0,
+          originX: 'center',
+          originY: 'top'
+        });
+        break;
+      case 1: // down
+        triangle = new fabric.Triangle({
+          left: x + BOX / 2,
+          top: y + BOX,
+          width: size,
+          height: size,
+          fill: 'blue',
+          angle: 180,
+          originX: 'center',
+          originY: 'bottom'
+        });
+        break;
+      case 2: // left
+        triangle = new fabric.Triangle({
+          left: x,
+          top: y + BOX / 2,
+          width: size,
+          height: size,
+          fill: 'blue',
+          angle: -90,
+          originX: 'left',
+          originY: 'center'
+        });
+        break;
+      case 3: // right
+        triangle = new fabric.Triangle({
+          left: x + BOX,
+          top: y + BOX / 2,
+          width: size,
+          height: size,
+          fill: 'blue',
+          angle: 90,
+          originX: 'right',
+          originY: 'center'
+        });
+        break;
+    }
+  
+    canvas.add(triangle);
+    arrowMap.set(key, triangle);
+    canvas.bringToFront(triangle);
+  }
+  
 
 /** Check if the 20x20 area at (x,y) is entirely white (walkable) */
 async function isWhiteUnderBox(x, y) {
@@ -534,5 +609,56 @@ const arrowImages = {
   async function prepareLiveValueIteration() {
     const state = await parseCanvasToState();
     await runLiveValueIteration(state);
+  }
+  
+
+  function resetEverything() {
+    // Clear canvas
+    canvas.clear();
+    canvas.backgroundColor = 'black';
+  
+    // Reset globals
+    valuePolicy = {};
+    liveValues = null;
+    livePolicyMap = null;
+    liveArrowMap = null;
+    liveIterationCount = 0;
+    iterationDisplay.innerText = "Iterations: -";
+    document.getElementById("deltaDisplay").innerText = "Δ: -";
+  
+    // Recreate white circles (start and goal areas)
+    const bottomLeft = new fabric.Circle({
+      left: R + 10 - R,
+      top: H - R - 10 - R,
+      radius: R,
+      fill: 'white',
+      selectable: false,
+      evented: false,
+    });
+  
+    const topRight = new fabric.Circle({
+      left: W - R - 10 - R,
+      top: R + 10 - R,
+      radius: R,
+      fill: 'white',
+      selectable: false,
+      evented: false,
+    });
+  
+    // Recreate red goal box
+    redBox.set({
+      left: W - R - 10 - BOX / 2,
+      top: R + 10 - BOX / 2,
+    });
+  
+    // Recreate green agent box
+    greenBox.set({
+      left: greenStartX - BOX / 2,
+      top: greenStartY - BOX / 2,
+    });
+  
+    // Re-add to canvas
+    canvas.add(bottomLeft, topRight, redBox, greenBox);
+    canvas.renderAll();
   }
   

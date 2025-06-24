@@ -13,13 +13,20 @@
   </style>
 </head>
 <body>
-  <h2>Green Box Navigation</h2>
+  <h2>Draw a Path From the Green Box to the Red Box</h2>
+  <p>Click run value iteration to run the planning algorithm in the background until converge of 0.0001 is reached. You can override the convergence thershold and discount rate in the input fields before running value iteration. 
+    After running value iteration, click on run optimal policy to see the green box follow the best path that was reached. You can also see the amount of iterations value iteration took to reach convergence where it says "iterations" in bold.
+  </p>
+  <p>
+    Click run live value iteration to see what decisions are made live. Click it again to see if the decisions update on a new pass. You can control how fast the live iteration goes with the speed delay field thing, and you can have it run multiple times
+    in a row automatically with the iterations field.
+  </p>
   <canvas id="c" width="1000" height="600"></canvas>
 
   <div id="controls">
     <!-- stroke-width slider for drawing -->
     <label>Stroke Width:
-      <input type="range" id="strokeWidth" min="40" max="100" value="5">
+      <input type="range" id="strokeWidth" min="60" max="100" value="5">
     </label>
     <br><br>
 
@@ -29,6 +36,8 @@
     <button onclick="manualMove(2)">← Left</button>
     <button onclick="manualMove(3)">→ Right</button>
     <br><br>
+    <button onclick="resetEverything()">Reset Everything</button>
+<br>
 
     <!-- γ and ε inputs -->
     <label>discount rate:
@@ -55,6 +64,7 @@
   <label>Iterations:
     <input id="liveIters" type="number" placeholder="1" value="1">
   </label>
+
   
   <script src="draw.js"></script>
 </body>
