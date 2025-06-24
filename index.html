@@ -42,10 +42,20 @@
     <!-- RL buttons -->
     <button onclick="runValueIterationClientSide()">Run Value Iteration</button>
     <button onclick="followValuePolicy()">Follow Optimal Policy</button>
+    <button onclick="prepareLiveValueIteration()">Run Live Value Iteration</button>
+
   </div>
   <div id="iterationCount" style="margin-top: 10px; font-weight: bold;">Iterations: -</div>
   <button onclick="resetGreenBox()">Reset Green Box</button>
-
+  <button onclick="followValuePolicy()">Follow Live Policy</button>
+  <div id="deltaDisplay" style="margin-top: 4px; font-style: italic;">Δ: -</div>
+  <label>Speed (ms delay):
+    <input id="delayMs" type="number" placeholder="120" value="120">
+  </label>
+  <label>Iterations:
+    <input id="liveIters" type="number" placeholder="1" value="1">
+  </label>
+  
   <script src="draw.js"></script>
 </body>
 </html>

@@ -11,6 +11,11 @@ const R = 50;
 const BOX = 20;
 let stopFollowingPolicy = false;
 
+let liveValues = null;
+let livePolicyMap = null;
+let liveArrowMap = null;
+let liveIterationCount = 0;
+
 
 // Define initial white areas at start and goal positions
 const bottomLeft = new fabric.Circle({
@@ -355,14 +360,14 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
         if (!validSet.has(neighborKey)) continue;  // skip if neighbor cell is not walkable
         // Compute reward: positive if moving closer to goal, negative if farther
         const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
-        let reward = currDist - nextDist;
+        let reward = 0;//currDist - nextDist;
         // Apply a small step penalty for any move
-        reward -= stepCost;
+        //reward -= stepCost;
         // Calculate value for this action
         let val;
         if (nextDist < boxSize) {
           // If this move reaches (or comes within one cell of) the goal, treat as terminal
-          val = reward;  // no future value since goal would be reached
+          val = 10000;  // no future value since goal would be reached
         } else {
           val = reward + gamma * (values.get(neighborKey) || 0);
         }
@@ -390,3 +395,144 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
     iterations: iterationCount
   };
 }
+
+// Place at the top or near your existing image definitions
+const arrowImages = {
+    0: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVElEQVR4nN3TMQ4AIAgDQOL//4yTi6FSDXSQlSIXEs2+KXd3JjeqF1MPLh2j1At3VabUCpHmpNQJs1uhvkbI/ooo1y9kdSjfK7zVRXN9wldd1TysCW4VQ92yzXMJAAAAAElFTkSuQmCC", // up
+    1: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nM2USRIAEAwEJ/7/5zipshtb6BNlZLocAL8jYaGquj1MRFy82R0GAG4UnCUZuGoZ37trmLcx5Pn7hrXWFrWcjWGrnTm3M+xZ9OxtDYHSZvS2xw1p2O/tnSGLB+FACFQuVF8qAAAAAElFTkSuQmCC", // down
+    2: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nOXSKQ4AMQxDUXfU+185JQ1pFMVZ2Hxk9JCB3yQiAgB7CtLK4AuVQQ9KgxFEgywUglnIBauQAbuQ9ulYtzFwCjZgF3bBKhyCWZgGWTgNsnC7qR+bDlYlKD/HRuTJAAAAAElFTkSuQmCC", // left
+    3: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAXUlEQVR4nNXUMQ4AIAhDUTDe/8o4mRglBGgX/9QwvBGRbzIzYzjjRlF4eEcEdkEEDsEOnAIrcAnMwC0wgiHQgycDVFXdGwJPCAI9qAVGUAnMQCmwAoVgB3pi/UN6C91sSAEM+763AAAAAElFTkSuQmCC"  // right
+  };
+  
+  async function runLiveValueIteration() {
+    const gammaInput = parseFloat(document.getElementById("gamma").value);
+    const gamma = isNaN(gammaInput) ? 0.99 : gammaInput;
+  
+    const delayMs = parseInt(document.getElementById("delayMs").value) || 120;
+    const totalIterations = parseInt(document.getElementById("liveIters").value) || 1;
+  
+    const state = await parseCanvasToState();
+    const { walkableMask, goal_pos } = state;
+    const boxSize = 20;
+    const goalKey = `${goal_pos[0]},${goal_pos[1]}`;
+  
+    const directions = {
+      0: [0, -boxSize],
+      1: [0, boxSize],
+      2: [-boxSize, 0],
+      3: [boxSize, 0],
+    };
+  
+    function isCellWalkable(cx, cy) {
+      if (cx - 10 < 0 || cy - 10 < 0 || cx + 9 >= walkableMask[0].length || cy + 9 >= walkableMask.length) {
+        return false;
+      }
+      return (
+        walkableMask[cy - 10][cx - 10] &&
+        walkableMask[cy - 10][cx + 9] &&
+        walkableMask[cy + 9][cx - 10] &&
+        walkableMask[cy + 9][cx + 9]
+      );
+    }
+  
+    const validStates = [];
+    for (let cy = 0; cy < walkableMask.length; cy += boxSize) {
+      for (let cx = 0; cx < walkableMask[0].length; cx += boxSize) {
+        if (isCellWalkable(cx, cy)) {
+          validStates.push([cx, cy]);
+        }
+      }
+    }
+  
+    const validSet = new Set(validStates.map(([x, y]) => `${x},${y}`));
+  
+    if (!liveValues) {
+      liveValues = new Map();
+      livePolicyMap = new Map();
+      liveArrowMap = new Map();
+      liveIterationCount = 0;
+    }
+  
+    const stepCost = 1;
+  
+    for (let iter = 0; iter < totalIterations; iter++) {
+      let delta = 0;
+      for (const [x, y] of validStates) {
+        const stateKey = `${x},${y}`;
+        if (stateKey === goalKey) {
+          liveValues.set(stateKey, 0);
+          continue;
+        }
+  
+        greenBox.set({ left: x - boxSize / 2, top: y - boxSize / 2 });
+        canvas.renderAll();
+        await new Promise(r => setTimeout(r, delayMs));
+  
+        let maxVal = -Infinity;
+        let bestAction = null;
+        const currDist = Math.hypot(x - goal_pos[0], y - goal_pos[1]);
+  
+        for (const [action, [dx, dy]] of Object.entries(directions)) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const neighborKey = `${nx},${ny}`;
+          if (!validSet.has(neighborKey)) continue;
+  
+          const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
+          let reward = 0;// currDist - nextDist - stepCost;
+  
+          const val = nextDist < boxSize
+            ? 10000
+            : reward + gamma * (liveValues.get(neighborKey) || 0);
+  
+          if (val > maxVal) {
+            maxVal = val;
+            bestAction = parseInt(action);
+          }
+        }
+  
+        if (bestAction !== null) {
+          const prevVal = liveValues.get(stateKey) || 0;
+          const prevAction = livePolicyMap.get(stateKey);
+          delta = Math.max(delta, Math.abs(prevVal - maxVal));
+          liveValues.set(stateKey, maxVal);
+          livePolicyMap.set(stateKey, bestAction);
+  
+          if (prevAction !== bestAction) {
+            if (liveArrowMap.has(stateKey)) {
+              canvas.remove(liveArrowMap.get(stateKey));
+            }
+            const arrow = new fabric.Text(["↑", "↓", "←", "→"][bestAction], {
+              left: x,
+              top: y,
+              fontSize: 16,
+              originX: 'center',
+              originY: 'center',
+              fill: 'black',
+              selectable: false,
+              evented: false,
+            });
+            liveArrowMap.set(stateKey, arrow);
+            canvas.add(arrow);
+          }
+        }
+      }
+  
+      liveIterationCount++;
+      valuePolicy = Object.fromEntries(livePolicyMap);
+      iterationDisplay.innerText = "Iterations: " + liveIterationCount;
+      document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
+      canvas.bringToFront(greenBox);
+      canvas.renderAll();
+    }
+  
+    resetGreenBox();
+  }
+  
+  
+  
+  async function prepareLiveValueIteration() {
+    const state = await parseCanvasToState();
+    await runLiveValueIteration(state);
+  }
+  
