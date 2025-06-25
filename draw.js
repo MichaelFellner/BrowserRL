@@ -1,5 +1,6 @@
 // All logic is handled client-side (no backend required)
 window.runValueIterationClientSide = runValueIterationClientSide;
+let tfModel = null;
 
 
 const canvas = new fabric.Canvas('c', {
@@ -18,6 +19,14 @@ let liveArrowMap = null;
 let liveIterationCount = 0;
 
 const arrowMap = new Map(); // Ensures it's always available
+
+// Define global neural network model
+const model = tf.sequential();
+
+model.add(tf.layers.dense({ inputShape: [2], units: 32, activation: 'relu' }));
+model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
+model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
+model.add(tf.layers.dense({ units: 4, activation: 'softmax' }));
 
 // Define initial white areas at start and goal positions
 const bottomLeft = new fabric.Circle({
@@ -660,5 +669,324 @@ const arrowImages = {
     // Re-add to canvas
     canvas.add(bottomLeft, topRight, redBox, greenBox);
     canvas.renderAll();
+  }
+  
+  async function checkPolicyPathLength() {
+    const resultElement = document.getElementById("pathCheckResult");
+  
+    // ✅ Helper to verify 20x20 cell walkability
+    function isCellWalkable(cx, cy, mask) {
+      if (
+        cx - 10 < 0 || cy - 10 < 0 ||
+        cy + 9 >= mask.length || cx + 9 >= mask[0].length
+      ) return false;
+  
+      return (
+        mask[cy - 10][cx - 10] &&
+        mask[cy - 10][cx + 9] &&
+        mask[cy + 9][cx - 10] &&
+        mask[cy + 9][cx + 9]
+      );
+    }
+  
+    if (!valuePolicy || Object.keys(valuePolicy).length === 0) {
+      resultElement.innerText = "Path length: - (no policy yet)";
+      console.log("🔍 No policy found");
+      return;
+    }
+  
+    const state = await parseCanvasToState();
+    const { agent_pos, goal_pos, walkableMask } = state;
+    let [x, y] = agent_pos;
+    const goalX = goal_pos[0], goalY = goal_pos[1];
+  
+    const visited = new Set();
+    const getKey = (x, y) => `${x},${y}`;
+    const directions = {
+      0: [0, -BOX],  // up
+      1: [0, BOX],   // down
+      2: [-BOX, 0],  // left
+      3: [BOX, 0],   // right
+    };
+  
+    console.log(`🚦 Starting policy validation from (${x}, ${y}) to goal at (${goalX}, ${goalY})`);
+  
+    for (let step = 0; step < 500; step++) {
+      const key = getKey(x, y);
+      console.log(`🔄 Step ${step}: at (${x}, ${y}), key = ${key}`);
+  
+      // ✅ Check if agent is adjacent to goal
+      if (
+        (Math.abs(x - goalX) === BOX && y === goalY) ||
+        (Math.abs(y - goalY) === BOX && x === goalX)
+      ) {
+        resultElement.innerText = `✅ Valid path found! Length: ${step}`;
+        console.log("✅ Adjacent to goal — path is valid");
+        return;
+      }
+  
+      if (visited.has(key)) {
+        resultElement.innerText = "❌ Policy loops or is invalid (cycle detected)";
+        console.warn("🔁 Cycle detected at", key);
+        return;
+      }
+      visited.add(key);
+  
+      const action = valuePolicy[key];
+      if (action === undefined) {
+        resultElement.innerText = "❌ Policy incomplete — no path to goal";
+        console.warn("⛔ No action for key:", key);
+        return;
+      }
+  
+      const [dx, dy] = directions[action];
+      const nextX = x + dx, nextY = y + dy;
+  
+      console.log(`➡️ Action: ${action}, moving to (${nextX}, ${nextY})`);
+  
+      // ✅ Use correct full-cell walkability check
+      if (!isCellWalkable(nextX, nextY, walkableMask)) {
+        resultElement.innerText = "❌ Invalid move encountered (not walkable)";
+        console.error("❌ Move to", nextX, nextY, "is not walkable");
+        return;
+      } else {
+        console.log(`✅ Move to (${nextX}, ${nextY}) is walkable`);
+      }
+  
+      // Step to next position
+      x = nextX;
+      y = nextY;
+    }
+  
+    resultElement.innerText = "❌ Path not found within step limit";
+    console.warn("🕓 Max steps exceeded without reaching goal");
+  }
+
+  // draw.js
+
+
+
+model.compile({
+  optimizer: tf.train.adam(0.01),
+  loss: 'categoricalCrossentropy',
+  metrics: ['accuracy']
+});
+
+async function trainNN() {
+    // Example training data (you can expand this later)
+    const inputs = tf.tensor2d([
+      [0, 0],
+      [20, 0],
+      [40, 0],
+      [60, 0]
+    ]);
+  
+    const labels = tf.tensor2d([
+      [0, 1, 0, 0],
+      [0, 1, 0, 0],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0]
+    ]);
+  
+    await model.fit(inputs, labels, {
+      epochs: 50
+    });
+  
+    console.log("✅ NN training complete");
+  
+    // Predict test positions
+    const test = tf.tensor2d([
+      [20, 0],
+      [60, 0]
+    ]);
+    const prediction = model.predict(test);
+    prediction.print();
+  }
+
+  async function testNNForwardPass() {
+    const state = await parseCanvasToState();
+    const { walkableMask } = state;
+  
+    const inputs = [];
+  
+    for (let y = 0; y < walkableMask.length; y += BOX) {
+      for (let x = 0; x < walkableMask[0].length; x += BOX) {
+        // Check if the center of a 20x20 cell is walkable
+        let cx = x, cy = y;
+        if (
+          cx - 10 < 0 || cy - 10 < 0 ||
+          cx + 9 >= walkableMask[0].length || cy + 9 >= walkableMask.length
+        ) continue;
+  
+        if (
+          walkableMask[cy - 10][cx - 10] &&
+          walkableMask[cy - 10][cx + 9] &&
+          walkableMask[cy + 9][cx - 10] &&
+          walkableMask[cy + 9][cx + 9]
+        ) {
+          // Normalize input positions to [0,1]
+          const normX = cx / walkableMask[0].length;
+          const normY = cy / walkableMask.length;
+          inputs.push([normX, normY]);
+        }
+      }
+    }
+  
+    const inputTensor = tf.tensor2d(inputs);
+    const output = model.predict(inputTensor);
+    console.log("📐 Output shape:", output.shape);
+
+    output.print();
+  }
+  
+  let trainingInputs = [];
+let trainingLabels = [];
+
+async function generateTrainingDataFromPolicy() {
+  const state = await parseCanvasToState();
+  const { walkableMask } = state;
+  const result = runValueIterationOnState(state, 0.99, 1e-9);
+  valuePolicy = result.policy;
+
+  trainingInputs = [];
+  trainingLabels = [];
+
+  for (const key in valuePolicy) {
+    const [x, y] = key.split(",").map(Number);
+    const normX = x / canvas.width;
+    const normY = y / canvas.height;
+    const action = valuePolicy[key];
+
+    const oneHot = [0, 0, 0, 0];
+    oneHot[action] = 1;
+
+    trainingInputs.push([normX, normY]);
+    trainingLabels.push(oneHot);
+  }
+
+  console.log("📊 Training data size:", trainingInputs.length);
+}
+
+async function trainOneEpoch() {
+    if (trainingInputs.length === 0 || trainingLabels.length === 0) {
+      alert("⚠️ Run generateTrainingDataFromPolicy() first.");
+      return;
+    }
+  
+    const xs = tf.tensor2d(trainingInputs);
+    const ys = tf.tensor2d(trainingLabels);
+  
+    const history = await model.fit(xs, ys, {
+      epochs: 1,
+      shuffle: true,
+      verbose: 0
+    });
+  
+    const loss = history.history.loss[0];
+    console.log("📉 Loss after epoch:", loss.toFixed(6));
+  
+    xs.dispose();
+    ys.dispose();
+  }
+
+  
+  function isCellWalkable(cx, cy, mask) {
+    if (cx - 10 < 0 || cy - 10 < 0 || cy + 9 >= mask.length || cx + 9 >= mask[0].length) return false;
+    return (
+      mask[cy - 10][cx - 10] &&
+      mask[cy - 10][cx + 9] &&
+      mask[cy + 9][cx - 10] &&
+      mask[cy + 9][cx + 9]
+    );
+  }
+
+  const nnArrowMap = new Map();
+
+function drawNNArrowAtState(x, y, action) {
+  const key = `${x},${y}`;
+  if (nnArrowMap.has(key)) {
+    canvas.remove(nnArrowMap.get(key));
+  }
+
+  const arrow = new fabric.Text("→", {
+    left: x + 2,
+    top: y - 8,
+    fontSize: 16,
+    fill: "purple",
+    originX: 'center',
+    originY: 'center',
+    selectable: false,
+    evented: false,
+    angle: [0, 180, -90, 90][action],
+  });
+
+  canvas.add(arrow);
+  canvas.bringToFront(arrow);
+  nnArrowMap.set(key, arrow);
+}
+
+function createAndStoreModel() {
+    const lrInput = parseFloat(document.getElementById("learningRateInput").value);
+    const learningRate = isNaN(lrInput) || lrInput <= 0 ? 0.01 : lrInput;
+  
+    tfModel = tf.sequential();
+    tfModel.add(tf.layers.dense({ inputShape: [2], units: 32, activation: 'relu' }));
+    tfModel.add(tf.layers.dense({ units: 32, activation: 'relu' }));
+    tfModel.add(tf.layers.dense({ units: 4, activation: 'softmax' }));
+  
+    const optimizer = tf.train.adam(learningRate);
+    tfModel.compile({
+      optimizer,
+      loss: 'categoricalCrossentropy',
+      metrics: ['accuracy']
+    });
+  
+    console.log(`✅ Model created with learning rate: ${learningRate}`);
+  }
+  
+
+  async function trainNEpochs() {
+    if (!tfModel) {
+      alert("⚠️ Create the model first.");
+      return;
+    }
+  
+    const n = parseInt(document.getElementById("epochsInput").value);
+    const lr = parseFloat(document.getElementById("learningRateInput").value);
+    if (isNaN(n) || isNaN(lr)) {
+      alert("Please enter valid values for epochs and learning rate.");
+      return;
+    }
+  
+    const optimizer = tf.train.adam(lr);
+    const inputs = tf.tensor2d(legalPositions.map(([x, y]) => [
+      x / canvas.width,
+      y / canvas.height
+    ]));
+    const labels = tf.tensor2d(legalPositions.map(([x, y]) => {
+      const key = `${x},${y}`;
+      const action = valuePolicy[key];
+      const oneHot = [0, 0, 0, 0];
+      if (action !== undefined) oneHot[action] = 1;
+      return oneHot;
+    }));
+  
+    for (let epoch = 0; epoch < n; epoch++) {
+      const loss = await optimizer.minimize(() => {
+        const preds = nnModel.predict(inputs);
+        return tf.losses.softmaxCrossEntropy(labels, preds).mean();
+      }, true);
+  
+      const lossVal = await loss.data();
+      console.log(`🧠 Epoch ${epoch + 1}/${n} — Loss: ${lossVal[0].toFixed(6)}`);
+  
+      const output = nnModel.predict(inputs);
+      drawNNPolicyArrows(output, legalPositions);
+  
+      await tf.nextFrame(); // Allow canvas/UI updates
+    }
+  
+    inputs.dispose();
+    labels.dispose();
   }
   
