@@ -52,7 +52,7 @@ const redBox = new fabric.Rect({
   top: R + 10 - BOX / 2,         // 50
   width: BOX,
   height: BOX,
-  fill: 'red',
+  fill: 'purple',
   selectable: false,
   evented: false,
 });
@@ -425,17 +425,37 @@ async function runValueIterationClientSide() {
   console.log("📌 Policy Keys:", Object.keys(valuePolicy));
 }
 
+function deltaToColor(value, max) {
+  if (max === 0) return 'rgb(0,0,0)';
+  const ratio = Math.min(Math.max(value / max, 0), 1.0);
+  const r = Math.floor(255 * (1 - ratio));
+  const g = Math.floor(255 * ratio);
+  return `rgb(${r},${g},0)`; // red to green
+}
 
-  
+if (typeof yellowMap === 'undefined') yellowMap = new Map();
+if (typeof liveValueIterationState === 'undefined') liveValueIterationState = null;
+if (typeof deltaTextMap === 'undefined') deltaTextMap = new Map();
+if (typeof liveMaxValueSeen === 'undefined') liveMaxValueSeen = 1;
+
 async function runLiveValueIteration() {
+  if (window._isLiveRunning) {
+    console.warn("⚠️ Already running. Ignoring duplicate call.");
+    return;
+  }
+  window._isLiveRunning = true;
+  console.log("🔁 runLiveValueIteration triggered");
+
   const gammaInput = parseFloat(document.getElementById("gamma").value);
   const gamma = isNaN(gammaInput) ? 0.99 : gammaInput;
-
   const delayMs = parseInt(document.getElementById("delayMs").value) || 120;
   const totalIterations = parseInt(document.getElementById("liveIters").value) || 1;
 
-  const state = await parseCanvasToState();
-  const { walkableMask, goal_pos } = state;
+  if (!liveValueIterationState) {
+    liveValueIterationState = await parseCanvasToState();
+  }
+
+  const { walkableMask, goal_pos } = liveValueIterationState;
   const boxSize = 20;
   const goalKey = `${goal_pos[0]},${goal_pos[1]}`;
 
@@ -476,56 +496,84 @@ async function runLiveValueIteration() {
     liveIterationCount = 0;
   }
 
-  const stepCost = 1;
+  // Initialize low default values for all valid states (except goal)
+  for (const [x, y] of validStates) {
+    const key = `${x},${y}`;
+    if (key !== goalKey && !liveValues.has(key)) {
+      liveValues.set(key, -1000);
+    }
+  }
 
-  for (let iter = 0; iter < totalIterations; iter++) {
-    let delta = 0;
-    for (const [x, y] of validStates) {
-      const stateKey = `${x},${y}`;
-      if (stateKey === goalKey) {
-        liveValues.set(stateKey, 0);
-        continue;
-      }
+  try {
+    for (let iter = 0; iter < totalIterations; iter++) {
+      let delta = 0;
 
-      greenBox.set({ left: x - boxSize / 2, top: y - boxSize / 2 });
-      canvas.renderAll();
-      await new Promise(r => setTimeout(r, delayMs));
-
-      let maxVal = -Infinity;
-      let bestAction = null;
-      const currDist = Math.hypot(x - goal_pos[0], y - goal_pos[1]);
-
-      for (const [action, [dx, dy]] of Object.entries(directions)) {
-        const nx = x + dx;
-        const ny = y + dy;
-        const neighborKey = `${nx},${ny}`;
-        if (!validSet.has(neighborKey)) continue;
-
-        const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
-        let reward = 0;// currDist - nextDist - stepCost;
-
-        const val = nextDist < boxSize
-          ? 10000
-          : reward + gamma * (liveValues.get(neighborKey) || 0);
-
-        if (val > maxVal) {
-          maxVal = val;
-          bestAction = parseInt(action);
+      for (const [x, y] of validStates) {
+        const stateKey = `${x},${y}`;
+        if (stateKey === goalKey) {
+          liveValues.set(stateKey, 0);
+          continue;
         }
-      }
 
-      if (bestAction !== null) {
-        const prevVal = liveValues.get(stateKey) || 0;
-        const prevAction = livePolicyMap.get(stateKey);
-        delta = Math.max(delta, Math.abs(prevVal - maxVal));
+        greenBox.set({ left: x - boxSize / 2, top: y - boxSize / 2 });
+        canvas.bringToFront(greenBox);
+        canvas.requestRenderAll();
+        await new Promise(r => setTimeout(r, delayMs));
+
+        let maxVal = -Infinity;
+        let bestAction = null;
+
+        for (const [action, [dx, dy]] of Object.entries(directions)) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const neighborKey = `${nx},${ny}`;
+          if (!validSet.has(neighborKey)) continue;
+
+          const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
+          let reward = 0;
+
+          const val = nextDist < boxSize
+            ? 10000
+            : reward + gamma * (liveValues.get(neighborKey) || -1000);
+
+          if (val > maxVal) {
+            maxVal = val;
+            bestAction = parseInt(action);
+          }
+        }
+
+        const prevVal = liveValues.get(stateKey) || -1000;
+        const deltaLocal = Math.abs(prevVal - maxVal);
+        delta = Math.max(delta, deltaLocal);
+
         liveValues.set(stateKey, maxVal);
         livePolicyMap.set(stateKey, bestAction);
 
-        if (prevAction !== bestAction) {
-          if (liveArrowMap.has(stateKey)) {
-            canvas.remove(liveArrowMap.get(stateKey));
-          }
-          const arrow = new fabric.Text(["↑", "↓", "←", "→"][bestAction], {
+        liveMaxValueSeen = Math.max(liveMaxValueSeen, maxVal);
+        const color = deltaToColor(maxVal, liveMaxValueSeen || 1);
+
+        if (yellowMap.has(stateKey)) {
+          yellowMap.get(stateKey).set({ fill: color });
+        } else {
+          const heatRect = new fabric.Rect({
+            left: x - boxSize / 2,
+            top: y - boxSize / 2,
+            width: boxSize,
+            height: boxSize,
+            fill: color,
+            selectable: false,
+            evented: false,
+            hoverCursor: 'default'
+          });
+          yellowMap.set(stateKey, heatRect);
+          canvas.add(heatRect);
+        }
+
+        const arrowChar = ["↑", "↓", "←", "→"][bestAction];
+        if (liveArrowMap.has(stateKey)) {
+          liveArrowMap.get(stateKey).set({ text: arrowChar });
+        } else {
+          const arrow = new fabric.Text(arrowChar, {
             left: x,
             top: y,
             fontSize: 16,
@@ -533,23 +581,27 @@ async function runLiveValueIteration() {
             originY: 'center',
             fill: 'black',
             selectable: false,
-            evented: false,
+            evented: false
           });
           liveArrowMap.set(stateKey, arrow);
           canvas.add(arrow);
         }
+
+        // Removed delta value debug label display
+
+        canvas.bringToFront(greenBox);
+        canvas.requestRenderAll();
       }
+
+      liveIterationCount++;
+      valuePolicy = Object.fromEntries(livePolicyMap);
+      iterationDisplay.innerText = "Iterations: " + liveIterationCount;
+      document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
     }
-
-    liveIterationCount++;
-    valuePolicy = Object.fromEntries(livePolicyMap);
-    iterationDisplay.innerText = "Iterations: " + liveIterationCount;
-    document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
-    canvas.bringToFront(greenBox);
-    canvas.renderAll();
+  } finally {
+    resetGreenBox();
+    window._isLiveRunning = false;
   }
-
-  resetGreenBox();
 }
 
 
@@ -1057,3 +1109,5 @@ async function generateTrainingDataFromPolicy() {
     console.log("🧠 Finished following NN policy.");
   }
   
+
+ 
