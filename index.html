@@ -67,14 +67,10 @@
   <p id="pathCheckResult">Path length: -</p>
   <button onclick="checkPolicyPathLength()">Check Policy Path Length</button>
 
-  <button onclick="trainNN()">Train Neural Network</button>
-  <button onclick="testNNForwardPass()">Run Forward Pass</button>
   <button onclick="generateTrainingDataFromPolicy()">Generate Training Data</button>
-  <button onclick="trainOneEpoch()">Train 1 Epoch</button>
-  <button onclick="followNeuralNetPolicy()">Run Neural Net Policy</button>
 <br>
 <label>Train Epochs:
-  <input id="trainEpochsInput" type="number" value="10" min="1" style="width: 60px;">
+  <input id="epochsInput" type="number" value="10" min="1" style="width: 60px;">
 </label>
 <button onclick="trainNEpochs()">Train N Epochs</button>
 <!-- Model Controls -->
@@ -84,11 +80,9 @@
   <input id="learningRateInput" type="number" step="0.0001" value="0.01" style="width: 80px;">
 </label>
 <br><br>
+<button onclick="followNNPolicy()">▶️ Follow NN Policy</button>
 
-<label>Train N Epochs:
-  <input id="trainEpochsInput" type="number" value="10" style="width: 60px;">
-</label>
-<button onclick="trainNEpochs()">Train N Epochs</button>
+
 
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
 

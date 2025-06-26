@@ -1,8 +1,15 @@
-// All logic is handled client-side (no backend required)
+//Consts 
 window.runValueIterationClientSide = runValueIterationClientSide;
 let tfModel = null;
 
 
+//Arrow images for functions that display arrows
+const arrowImages = {
+  0: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVElEQVR4nN3TMQ4AIAgDQOL//4yTi6FSDXSQlSIXEs2+KXd3JjeqF1MPLh2j1At3VabUCpHmpNQJs1uhvkbI/ooo1y9kdSjfK7zVRXN9wldd1TysCW4VQ92yzXMJAAAAAElFTkSuQmCC", // up
+  1: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nM2USRIAEAwEJ/7/5zipshtb6BNlZLocAL8jYaGquj1MRFy82R0GAG4UnCUZuGoZ37trmLcx5Pn7hrXWFrWcjWGrnTm3M+xZ9OxtDYHSZvS2xw1p2O/tnSGLB+FACFQuVF8qAAAAAElFTkSuQmCC", // down
+  2: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nOXSKQ4AMQxDUXfU+185JQ1pFMVZ2Hxk9JCB3yQiAgB7CtLK4AuVQQ9KgxFEgywUglnIBauQAbuQ9ulYtzFwCjZgF3bBKhyCWZgGWTgNsnC7qR+bDlYlKD/HRuTJAAAAAElFTkSuQmCC", // left
+  3: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAXUlEQVR4nNXUMQ4AIAhDUTDe/8o4mRglBGgX/9QwvBGRbzIzYzjjRlF4eEcEdkEEDsEOnAIrcAnMwC0wgiHQgycDVFXdGwJPCAI9qAVGUAnMQCmwAoVgB3pi/UN6C91sSAEM+763AAAAAElFTkSuQmCC"  // right
+};
 const canvas = new fabric.Canvas('c', {
   isDrawingMode: true,
   backgroundColor: 'black',
@@ -11,6 +18,8 @@ const canvas = new fabric.Canvas('c', {
 const W = 1000, H = 600;
 const R = 50;
 const BOX = 20;
+
+
 let stopFollowingPolicy = false;
 
 let liveValues = null;
@@ -20,13 +29,6 @@ let liveIterationCount = 0;
 
 const arrowMap = new Map(); // Ensures it's always available
 
-// Define global neural network model
-const model = tf.sequential();
-
-model.add(tf.layers.dense({ inputShape: [2], units: 32, activation: 'relu' }));
-model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
-model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
-model.add(tf.layers.dense({ units: 4, activation: 'softmax' }));
 
 // Define initial white areas at start and goal positions
 const bottomLeft = new fabric.Circle({
@@ -92,6 +94,16 @@ document.getElementById("strokeWidth").addEventListener("input", e => {
 });
 
 let iterationDisplay = document.getElementById("iterationCount");
+
+/**
+ * 
+ * 
+ * Part 2, Util Functions
+ * 
+ * 
+ */
+
+
 let valuePolicy = {};
 
 /** Get the center coordinates of the red goal box */
@@ -102,72 +114,6 @@ function getGoalCenter() {
   };
 }
 
-function placeArrow(x, y, action, arrowMap) {
-    // Remove existing arrow at this location, if any
-    const key = `${x},${y}`;
-    if (arrowMap.has(key)) {
-      canvas.remove(arrowMap.get(key));
-    }
-  
-    // Draw a simple arrow as a triangle
-    const size = 10;
-    let triangle;
-    switch (action) {
-      case 0: // up
-        triangle = new fabric.Triangle({
-          left: x + BOX / 2,
-          top: y,
-          width: size,
-          height: size,
-          fill: 'blue',
-          angle: 0,
-          originX: 'center',
-          originY: 'top'
-        });
-        break;
-      case 1: // down
-        triangle = new fabric.Triangle({
-          left: x + BOX / 2,
-          top: y + BOX,
-          width: size,
-          height: size,
-          fill: 'blue',
-          angle: 180,
-          originX: 'center',
-          originY: 'bottom'
-        });
-        break;
-      case 2: // left
-        triangle = new fabric.Triangle({
-          left: x,
-          top: y + BOX / 2,
-          width: size,
-          height: size,
-          fill: 'blue',
-          angle: -90,
-          originX: 'left',
-          originY: 'center'
-        });
-        break;
-      case 3: // right
-        triangle = new fabric.Triangle({
-          left: x + BOX,
-          top: y + BOX / 2,
-          width: size,
-          height: size,
-          fill: 'blue',
-          angle: 90,
-          originX: 'right',
-          originY: 'center'
-        });
-        break;
-    }
-  
-    canvas.add(triangle);
-    arrowMap.set(key, triangle);
-    canvas.bringToFront(triangle);
-  }
-  
 
 /** Check if the 20x20 area at (x,y) is entirely white (walkable) */
 async function isWhiteUnderBox(x, y) {
@@ -250,6 +196,63 @@ async function manualMove(action) {
   }
 }
 
+/** Reset the green box back to its starting position */
+function resetGreenBox() {
+  stopFollowingPolicy = true;
+  greenBox.set({
+    left: greenStartX - BOX / 2,
+    top: greenStartY - BOX / 2
+  });
+  canvas.renderAll();
+}
+
+/** Convert the canvas image into a state object for value iteration */
+async function parseCanvasToState() {
+  // Hide the agent and goal while capturing the canvas for walkable area
+  greenBox.visible = false;
+  redBox.visible = false;
+  canvas.requestRenderAll();
+
+  // Render the entire canvas to an image (PNG)
+  const dataURL = canvas.toDataURL({ format: 'png' });
+  const img = new Image();
+  await new Promise(resolve => {
+    img.onload = resolve;
+    img.src = dataURL;
+  });
+  // Draw the image onto a temporary canvas to access pixel data
+  const tmpCanvas = document.createElement("canvas");
+  tmpCanvas.width = img.width;
+  tmpCanvas.height = img.height;
+  const ctx = tmpCanvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const imgData = ctx.getImageData(0, 0, img.width, img.height).data;
+
+  // Restore visibility of agent and goal
+  greenBox.visible = true;
+  redBox.visible = true;
+  canvas.requestRenderAll();
+
+  const walkable = [];
+  for (let y = 0; y < img.height; y++) {
+    walkable[y] = [];
+    for (let x = 0; x < img.width; x++) {
+      // A pixel is walkable if it’s white (RGB all >240)
+      const idx = (y * img.width + x) * 4;
+      const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2];
+      walkable[y][x] = (r > 240 && g > 240 && b > 240);
+    }
+  }
+  // Determine agent (green) and goal (red) positions using their objects
+  const agentCenterX = Math.floor(greenBox.left + BOX / 2);
+  const agentCenterY = Math.floor(greenBox.top + BOX / 2);
+  const agentPos = [Math.round(agentCenterX / BOX) * BOX, Math.round(agentCenterY / BOX) * BOX];
+  const goalCenter = getGoalCenter();
+  const goalPos = [Math.round(goalCenter.x / BOX) * BOX, Math.round(goalCenter.y / BOX) * BOX];
+
+  return { agent_pos: agentPos, goal_pos: goalPos, walkableMask: walkable };
+}
+
 /** Follow the pre-computed optimal policy step-by-step */
 async function followValuePolicy() {
     if (!valuePolicy || Object.keys(valuePolicy).length === 0) {
@@ -301,81 +304,6 @@ async function followValuePolicy() {
     console.log("🛑 Finished following policy.");
   }
   
-
-/** Reset the green box back to its starting position */
-function resetGreenBox() {
-    stopFollowingPolicy = true;
-    greenBox.set({
-      left: greenStartX - BOX / 2,
-      top: greenStartY - BOX / 2
-    });
-    canvas.renderAll();
-  }
-  
-
-/** Run value iteration on the current canvas state (computes the optimal policy) */
-async function runValueIterationClientSide() {
-  const gammaInput = parseFloat(document.getElementById("gamma").value);
-  const epsInput = parseFloat(document.getElementById("threshold").value);
-  const gamma = isNaN(gammaInput) ? 0.99 : gammaInput;
-  const threshold = isNaN(epsInput) ? 1e-4 : epsInput;
-
-  // Parse the canvas into a state representation
-  const state = await parseCanvasToState();
-  // Perform value iteration on the state
-  const result = runValueIterationOnState(state, gamma, threshold);
-  valuePolicy = result.policy;
-  iterationDisplay.innerText = "Iterations: " + result.iterations;
-  alert("✅ Value iteration done!");
-  console.log("📌 Policy Keys:", Object.keys(valuePolicy));
-}
-
-/** Convert the canvas image into a state object for value iteration */
-async function parseCanvasToState() {
-  // Hide the agent and goal while capturing the canvas for walkable area
-  greenBox.visible = false;
-  redBox.visible = false;
-  canvas.requestRenderAll();
-
-  // Render the entire canvas to an image (PNG)
-  const dataURL = canvas.toDataURL({ format: 'png' });
-  const img = new Image();
-  await new Promise(resolve => {
-    img.onload = resolve;
-    img.src = dataURL;
-  });
-  // Draw the image onto a temporary canvas to access pixel data
-  const tmpCanvas = document.createElement("canvas");
-  tmpCanvas.width = img.width;
-  tmpCanvas.height = img.height;
-  const ctx = tmpCanvas.getContext("2d");
-  ctx.drawImage(img, 0, 0);
-  const imgData = ctx.getImageData(0, 0, img.width, img.height).data;
-
-  // Restore visibility of agent and goal
-  greenBox.visible = true;
-  redBox.visible = true;
-  canvas.requestRenderAll();
-
-  const walkable = [];
-  for (let y = 0; y < img.height; y++) {
-    walkable[y] = [];
-    for (let x = 0; x < img.width; x++) {
-      // A pixel is walkable if it’s white (RGB all >240)
-      const idx = (y * img.width + x) * 4;
-      const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2];
-      walkable[y][x] = (r > 240 && g > 240 && b > 240);
-    }
-  }
-  // Determine agent (green) and goal (red) positions using their objects
-  const agentCenterX = Math.floor(greenBox.left + BOX / 2);
-  const agentCenterY = Math.floor(greenBox.top + BOX / 2);
-  const agentPos = [Math.round(agentCenterX / BOX) * BOX, Math.round(agentCenterY / BOX) * BOX];
-  const goalCenter = getGoalCenter();
-  const goalPos = [Math.round(goalCenter.x / BOX) * BOX, Math.round(goalCenter.y / BOX) * BOX];
-
-  return { agent_pos: agentPos, goal_pos: goalPos, walkableMask: walkable };
-}
 
 /** Perform value iteration on the given state (walkable grid) to compute optimal policy */
 function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
@@ -480,367 +408,314 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
   };
 }
 
-// Place at the top or near your existing image definitions
-const arrowImages = {
-    0: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAVElEQVR4nN3TMQ4AIAgDQOL//4yTi6FSDXSQlSIXEs2+KXd3JjeqF1MPLh2j1At3VabUCpHmpNQJs1uhvkbI/ooo1y9kdSjfK7zVRXN9wldd1TysCW4VQ92yzXMJAAAAAElFTkSuQmCC", // up
-    1: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAYElEQVR4nM2USRIAEAwEJ/7/5zipshtb6BNlZLocAL8jYaGquj1MRFy82R0GAG4UnCUZuGoZ37trmLcx5Pn7hrXWFrWcjWGrnTm3M+xZ9OxtDYHSZvS2xw1p2O/tnSGLB+FACFQuVF8qAAAAAElFTkSuQmCC", // down
-    2: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAWklEQVR4nOXSKQ4AMQxDUXfU+185JQ1pFMVZ2Hxk9JCB3yQiAgB7CtLK4AuVQQ9KgxFEgywUglnIBauQAbuQ9ulYtzFwCjZgF3bBKhyCWZgGWTgNsnC7qR+bDlYlKD/HRuTJAAAAAElFTkSuQmCC", // left
-    3: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAXUlEQVR4nNXUMQ4AIAhDUTDe/8o4mRglBGgX/9QwvBGRbzIzYzjjRlF4eEcEdkEEDsEOnAIrcAnMwC0wgiHQgycDVFXdGwJPCAI9qAVGUAnMQCmwAoVgB3pi/UN6C91sSAEM+763AAAAAElFTkSuQmCC"  // right
-  };
-  
-  async function runLiveValueIteration() {
-    const gammaInput = parseFloat(document.getElementById("gamma").value);
-    const gamma = isNaN(gammaInput) ? 0.99 : gammaInput;
-  
-    const delayMs = parseInt(document.getElementById("delayMs").value) || 120;
-    const totalIterations = parseInt(document.getElementById("liveIters").value) || 1;
-  
-    const state = await parseCanvasToState();
-    const { walkableMask, goal_pos } = state;
-    const boxSize = 20;
-    const goalKey = `${goal_pos[0]},${goal_pos[1]}`;
-  
-    const directions = {
-      0: [0, -boxSize],
-      1: [0, boxSize],
-      2: [-boxSize, 0],
-      3: [boxSize, 0],
-    };
-  
-    function isCellWalkable(cx, cy) {
-      if (cx - 10 < 0 || cy - 10 < 0 || cx + 9 >= walkableMask[0].length || cy + 9 >= walkableMask.length) {
-        return false;
-      }
-      return (
-        walkableMask[cy - 10][cx - 10] &&
-        walkableMask[cy - 10][cx + 9] &&
-        walkableMask[cy + 9][cx - 10] &&
-        walkableMask[cy + 9][cx + 9]
-      );
-    }
-  
-    const validStates = [];
-    for (let cy = 0; cy < walkableMask.length; cy += boxSize) {
-      for (let cx = 0; cx < walkableMask[0].length; cx += boxSize) {
-        if (isCellWalkable(cx, cy)) {
-          validStates.push([cx, cy]);
-        }
-      }
-    }
-  
-    const validSet = new Set(validStates.map(([x, y]) => `${x},${y}`));
-  
-    if (!liveValues) {
-      liveValues = new Map();
-      livePolicyMap = new Map();
-      liveArrowMap = new Map();
-      liveIterationCount = 0;
-    }
-  
-    const stepCost = 1;
-  
-    for (let iter = 0; iter < totalIterations; iter++) {
-      let delta = 0;
-      for (const [x, y] of validStates) {
-        const stateKey = `${x},${y}`;
-        if (stateKey === goalKey) {
-          liveValues.set(stateKey, 0);
-          continue;
-        }
-  
-        greenBox.set({ left: x - boxSize / 2, top: y - boxSize / 2 });
-        canvas.renderAll();
-        await new Promise(r => setTimeout(r, delayMs));
-  
-        let maxVal = -Infinity;
-        let bestAction = null;
-        const currDist = Math.hypot(x - goal_pos[0], y - goal_pos[1]);
-  
-        for (const [action, [dx, dy]] of Object.entries(directions)) {
-          const nx = x + dx;
-          const ny = y + dy;
-          const neighborKey = `${nx},${ny}`;
-          if (!validSet.has(neighborKey)) continue;
-  
-          const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
-          let reward = 0;// currDist - nextDist - stepCost;
-  
-          const val = nextDist < boxSize
-            ? 10000
-            : reward + gamma * (liveValues.get(neighborKey) || 0);
-  
-          if (val > maxVal) {
-            maxVal = val;
-            bestAction = parseInt(action);
-          }
-        }
-  
-        if (bestAction !== null) {
-          const prevVal = liveValues.get(stateKey) || 0;
-          const prevAction = livePolicyMap.get(stateKey);
-          delta = Math.max(delta, Math.abs(prevVal - maxVal));
-          liveValues.set(stateKey, maxVal);
-          livePolicyMap.set(stateKey, bestAction);
-  
-          if (prevAction !== bestAction) {
-            if (liveArrowMap.has(stateKey)) {
-              canvas.remove(liveArrowMap.get(stateKey));
-            }
-            const arrow = new fabric.Text(["↑", "↓", "←", "→"][bestAction], {
-              left: x,
-              top: y,
-              fontSize: 16,
-              originX: 'center',
-              originY: 'center',
-              fill: 'black',
-              selectable: false,
-              evented: false,
-            });
-            liveArrowMap.set(stateKey, arrow);
-            canvas.add(arrow);
-          }
-        }
-      }
-  
-      liveIterationCount++;
-      valuePolicy = Object.fromEntries(livePolicyMap);
-      iterationDisplay.innerText = "Iterations: " + liveIterationCount;
-      document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
-      canvas.bringToFront(greenBox);
-      canvas.renderAll();
-    }
-  
-    resetGreenBox();
-  }
-  
-  
-  
-  async function prepareLiveValueIteration() {
-    const state = await parseCanvasToState();
-    await runLiveValueIteration(state);
-  }
-  
+/** Run value iteration on the current canvas state (computes the optimal policy) */
+async function runValueIterationClientSide() {
+  const gammaInput = parseFloat(document.getElementById("gamma").value);
+  const epsInput = parseFloat(document.getElementById("threshold").value);
+  const gamma = isNaN(gammaInput) ? 0.99 : gammaInput;
+  const threshold = isNaN(epsInput) ? 1e-4 : epsInput;
 
-  function resetEverything() {
-    // Clear canvas
-    canvas.clear();
-    canvas.backgroundColor = 'black';
+  // Parse the canvas into a state representation
+  const state = await parseCanvasToState();
+  // Perform value iteration on the state
+  const result = runValueIterationOnState(state, gamma, threshold);
+  valuePolicy = result.policy;
+  iterationDisplay.innerText = "Iterations: " + result.iterations;
+  alert("✅ Value iteration done!");
+  console.log("📌 Policy Keys:", Object.keys(valuePolicy));
+}
+
+
   
-    // Reset globals
-    valuePolicy = {};
-    liveValues = null;
-    livePolicyMap = null;
-    liveArrowMap = null;
+async function runLiveValueIteration() {
+  const gammaInput = parseFloat(document.getElementById("gamma").value);
+  const gamma = isNaN(gammaInput) ? 0.99 : gammaInput;
+
+  const delayMs = parseInt(document.getElementById("delayMs").value) || 120;
+  const totalIterations = parseInt(document.getElementById("liveIters").value) || 1;
+
+  const state = await parseCanvasToState();
+  const { walkableMask, goal_pos } = state;
+  const boxSize = 20;
+  const goalKey = `${goal_pos[0]},${goal_pos[1]}`;
+
+  const directions = {
+    0: [0, -boxSize],
+    1: [0, boxSize],
+    2: [-boxSize, 0],
+    3: [boxSize, 0],
+  };
+
+  function isCellWalkable(cx, cy) {
+    if (cx - 10 < 0 || cy - 10 < 0 || cx + 9 >= walkableMask[0].length || cy + 9 >= walkableMask.length) {
+      return false;
+    }
+    return (
+      walkableMask[cy - 10][cx - 10] &&
+      walkableMask[cy - 10][cx + 9] &&
+      walkableMask[cy + 9][cx - 10] &&
+      walkableMask[cy + 9][cx + 9]
+    );
+  }
+
+  const validStates = [];
+  for (let cy = 0; cy < walkableMask.length; cy += boxSize) {
+    for (let cx = 0; cx < walkableMask[0].length; cx += boxSize) {
+      if (isCellWalkable(cx, cy)) {
+        validStates.push([cx, cy]);
+      }
+    }
+  }
+
+  const validSet = new Set(validStates.map(([x, y]) => `${x},${y}`));
+
+  if (!liveValues) {
+    liveValues = new Map();
+    livePolicyMap = new Map();
+    liveArrowMap = new Map();
     liveIterationCount = 0;
-    iterationDisplay.innerText = "Iterations: -";
-    document.getElementById("deltaDisplay").innerText = "Δ: -";
-  
-    // Recreate white circles (start and goal areas)
-    const bottomLeft = new fabric.Circle({
-      left: R + 10 - R,
-      top: H - R - 10 - R,
-      radius: R,
-      fill: 'white',
-      selectable: false,
-      evented: false,
-    });
-  
-    const topRight = new fabric.Circle({
-      left: W - R - 10 - R,
-      top: R + 10 - R,
-      radius: R,
-      fill: 'white',
-      selectable: false,
-      evented: false,
-    });
-  
-    // Recreate red goal box
-    redBox.set({
-      left: W - R - 10 - BOX / 2,
-      top: R + 10 - BOX / 2,
-    });
-  
-    // Recreate green agent box
-    greenBox.set({
-      left: greenStartX - BOX / 2,
-      top: greenStartY - BOX / 2,
-    });
-  
-    // Re-add to canvas
-    canvas.add(bottomLeft, topRight, redBox, greenBox);
+  }
+
+  const stepCost = 1;
+
+  for (let iter = 0; iter < totalIterations; iter++) {
+    let delta = 0;
+    for (const [x, y] of validStates) {
+      const stateKey = `${x},${y}`;
+      if (stateKey === goalKey) {
+        liveValues.set(stateKey, 0);
+        continue;
+      }
+
+      greenBox.set({ left: x - boxSize / 2, top: y - boxSize / 2 });
+      canvas.renderAll();
+      await new Promise(r => setTimeout(r, delayMs));
+
+      let maxVal = -Infinity;
+      let bestAction = null;
+      const currDist = Math.hypot(x - goal_pos[0], y - goal_pos[1]);
+
+      for (const [action, [dx, dy]] of Object.entries(directions)) {
+        const nx = x + dx;
+        const ny = y + dy;
+        const neighborKey = `${nx},${ny}`;
+        if (!validSet.has(neighborKey)) continue;
+
+        const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
+        let reward = 0;// currDist - nextDist - stepCost;
+
+        const val = nextDist < boxSize
+          ? 10000
+          : reward + gamma * (liveValues.get(neighborKey) || 0);
+
+        if (val > maxVal) {
+          maxVal = val;
+          bestAction = parseInt(action);
+        }
+      }
+
+      if (bestAction !== null) {
+        const prevVal = liveValues.get(stateKey) || 0;
+        const prevAction = livePolicyMap.get(stateKey);
+        delta = Math.max(delta, Math.abs(prevVal - maxVal));
+        liveValues.set(stateKey, maxVal);
+        livePolicyMap.set(stateKey, bestAction);
+
+        if (prevAction !== bestAction) {
+          if (liveArrowMap.has(stateKey)) {
+            canvas.remove(liveArrowMap.get(stateKey));
+          }
+          const arrow = new fabric.Text(["↑", "↓", "←", "→"][bestAction], {
+            left: x,
+            top: y,
+            fontSize: 16,
+            originX: 'center',
+            originY: 'center',
+            fill: 'black',
+            selectable: false,
+            evented: false,
+          });
+          liveArrowMap.set(stateKey, arrow);
+          canvas.add(arrow);
+        }
+      }
+    }
+
+    liveIterationCount++;
+    valuePolicy = Object.fromEntries(livePolicyMap);
+    iterationDisplay.innerText = "Iterations: " + liveIterationCount;
+    document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
+    canvas.bringToFront(greenBox);
     canvas.renderAll();
   }
-  
-  async function checkPolicyPathLength() {
-    const resultElement = document.getElementById("pathCheckResult");
-  
-    // ✅ Helper to verify 20x20 cell walkability
-    function isCellWalkable(cx, cy, mask) {
-      if (
-        cx - 10 < 0 || cy - 10 < 0 ||
-        cy + 9 >= mask.length || cx + 9 >= mask[0].length
-      ) return false;
-  
-      return (
-        mask[cy - 10][cx - 10] &&
-        mask[cy - 10][cx + 9] &&
-        mask[cy + 9][cx - 10] &&
-        mask[cy + 9][cx + 9]
-      );
-    }
-  
-    if (!valuePolicy || Object.keys(valuePolicy).length === 0) {
-      resultElement.innerText = "Path length: - (no policy yet)";
-      console.log("🔍 No policy found");
+
+  resetGreenBox();
+}
+
+
+
+async function prepareLiveValueIteration() {
+  const state = await parseCanvasToState();
+  await runLiveValueIteration(state);
+}
+
+
+function resetEverything() {
+  // Clear canvas
+  canvas.clear();
+  canvas.backgroundColor = 'black';
+
+  // Reset globals
+  valuePolicy = {};
+  liveValues = null;
+  livePolicyMap = null;
+  liveArrowMap = null;
+  liveIterationCount = 0;
+  iterationDisplay.innerText = "Iterations: -";
+  document.getElementById("deltaDisplay").innerText = "Δ: -";
+
+  // Recreate white circles (start and goal areas)
+  const bottomLeft = new fabric.Circle({
+    left: R + 10 - R,
+    top: H - R - 10 - R,
+    radius: R,
+    fill: 'white',
+    selectable: false,
+    evented: false,
+  });
+
+  const topRight = new fabric.Circle({
+    left: W - R - 10 - R,
+    top: R + 10 - R,
+    radius: R,
+    fill: 'white',
+    selectable: false,
+    evented: false,
+  });
+
+  // Recreate red goal box
+  redBox.set({
+    left: W - R - 10 - BOX / 2,
+    top: R + 10 - BOX / 2,
+  });
+
+  // Recreate green agent box
+  greenBox.set({
+    left: greenStartX - BOX / 2,
+    top: greenStartY - BOX / 2,
+  });
+
+  // Re-add to canvas
+  canvas.add(bottomLeft, topRight, redBox, greenBox);
+  canvas.renderAll();
+}
+
+async function checkPolicyPathLength() {
+  const resultElement = document.getElementById("pathCheckResult");
+
+  // ✅ Helper to verify 20x20 cell walkability
+  function isCellWalkable(cx, cy, mask) {
+    if (
+      cx - 10 < 0 || cy - 10 < 0 ||
+      cy + 9 >= mask.length || cx + 9 >= mask[0].length
+    ) return false;
+
+    return (
+      mask[cy - 10][cx - 10] &&
+      mask[cy - 10][cx + 9] &&
+      mask[cy + 9][cx - 10] &&
+      mask[cy + 9][cx + 9]
+    );
+  }
+
+  if (!valuePolicy || Object.keys(valuePolicy).length === 0) {
+    resultElement.innerText = "Path length: - (no policy yet)";
+    console.log("🔍 No policy found");
+    return;
+  }
+
+  const state = await parseCanvasToState();
+  const { agent_pos, goal_pos, walkableMask } = state;
+  let [x, y] = agent_pos;
+  const goalX = goal_pos[0], goalY = goal_pos[1];
+
+  const visited = new Set();
+  const getKey = (x, y) => `${x},${y}`;
+  const directions = {
+    0: [0, -BOX],  // up
+    1: [0, BOX],   // down
+    2: [-BOX, 0],  // left
+    3: [BOX, 0],   // right
+  };
+
+  console.log(`🚦 Starting policy validation from (${x}, ${y}) to goal at (${goalX}, ${goalY})`);
+
+  for (let step = 0; step < 500; step++) {
+    const key = getKey(x, y);
+    console.log(`🔄 Step ${step}: at (${x}, ${y}), key = ${key}`);
+
+    // ✅ Check if agent is adjacent to goal
+    if (
+      (Math.abs(x - goalX) === BOX && y === goalY) ||
+      (Math.abs(y - goalY) === BOX && x === goalX)
+    ) {
+      resultElement.innerText = `✅ Valid path found! Length: ${step}`;
+      console.log("✅ Adjacent to goal — path is valid");
       return;
     }
-  
-    const state = await parseCanvasToState();
-    const { agent_pos, goal_pos, walkableMask } = state;
-    let [x, y] = agent_pos;
-    const goalX = goal_pos[0], goalY = goal_pos[1];
-  
-    const visited = new Set();
-    const getKey = (x, y) => `${x},${y}`;
-    const directions = {
-      0: [0, -BOX],  // up
-      1: [0, BOX],   // down
-      2: [-BOX, 0],  // left
-      3: [BOX, 0],   // right
-    };
-  
-    console.log(`🚦 Starting policy validation from (${x}, ${y}) to goal at (${goalX}, ${goalY})`);
-  
-    for (let step = 0; step < 500; step++) {
-      const key = getKey(x, y);
-      console.log(`🔄 Step ${step}: at (${x}, ${y}), key = ${key}`);
-  
-      // ✅ Check if agent is adjacent to goal
-      if (
-        (Math.abs(x - goalX) === BOX && y === goalY) ||
-        (Math.abs(y - goalY) === BOX && x === goalX)
-      ) {
-        resultElement.innerText = `✅ Valid path found! Length: ${step}`;
-        console.log("✅ Adjacent to goal — path is valid");
-        return;
-      }
-  
-      if (visited.has(key)) {
-        resultElement.innerText = "❌ Policy loops or is invalid (cycle detected)";
-        console.warn("🔁 Cycle detected at", key);
-        return;
-      }
-      visited.add(key);
-  
-      const action = valuePolicy[key];
-      if (action === undefined) {
-        resultElement.innerText = "❌ Policy incomplete — no path to goal";
-        console.warn("⛔ No action for key:", key);
-        return;
-      }
-  
-      const [dx, dy] = directions[action];
-      const nextX = x + dx, nextY = y + dy;
-  
-      console.log(`➡️ Action: ${action}, moving to (${nextX}, ${nextY})`);
-  
-      // ✅ Use correct full-cell walkability check
-      if (!isCellWalkable(nextX, nextY, walkableMask)) {
-        resultElement.innerText = "❌ Invalid move encountered (not walkable)";
-        console.error("❌ Move to", nextX, nextY, "is not walkable");
-        return;
-      } else {
-        console.log(`✅ Move to (${nextX}, ${nextY}) is walkable`);
-      }
-  
-      // Step to next position
-      x = nextX;
-      y = nextY;
+
+    if (visited.has(key)) {
+      resultElement.innerText = "❌ Policy loops or is invalid (cycle detected)";
+      console.warn("🔁 Cycle detected at", key);
+      return;
     }
-  
-    resultElement.innerText = "❌ Path not found within step limit";
-    console.warn("🕓 Max steps exceeded without reaching goal");
+    visited.add(key);
+
+    const action = valuePolicy[key];
+    if (action === undefined) {
+      resultElement.innerText = "❌ Policy incomplete — no path to goal";
+      console.warn("⛔ No action for key:", key);
+      return;
+    }
+
+    const [dx, dy] = directions[action];
+    const nextX = x + dx, nextY = y + dy;
+
+    console.log(`➡️ Action: ${action}, moving to (${nextX}, ${nextY})`);
+
+    // ✅ Use correct full-cell walkability check
+    if (!isCellWalkable(nextX, nextY, walkableMask)) {
+      resultElement.innerText = "❌ Invalid move encountered (not walkable)";
+      console.error("❌ Move to", nextX, nextY, "is not walkable");
+      return;
+    } else {
+      console.log(`✅ Move to (${nextX}, ${nextY}) is walkable`);
+    }
+
+    // Step to next position
+    x = nextX;
+    y = nextY;
   }
+
+  resultElement.innerText = "❌ Path not found within step limit";
+  console.warn("🕓 Max steps exceeded without reaching goal");
+}
 
   // draw.js
 
 
-
-model.compile({
-  optimizer: tf.train.adam(0.01),
-  loss: 'categoricalCrossentropy',
-  metrics: ['accuracy']
-});
-
-async function trainNN() {
-    // Example training data (you can expand this later)
-    const inputs = tf.tensor2d([
-      [0, 0],
-      [20, 0],
-      [40, 0],
-      [60, 0]
-    ]);
   
-    const labels = tf.tensor2d([
-      [0, 1, 0, 0],
-      [0, 1, 0, 0],
-      [0, 1, 0, 0],
-      [0, 0, 1, 0]
-    ]);
-  
-    await model.fit(inputs, labels, {
-      epochs: 50
-    });
-  
-    console.log("✅ NN training complete");
-  
-    // Predict test positions
-    const test = tf.tensor2d([
-      [20, 0],
-      [60, 0]
-    ]);
-    const prediction = model.predict(test);
-    prediction.print();
-  }
-
-  async function testNNForwardPass() {
-    const state = await parseCanvasToState();
-    const { walkableMask } = state;
-  
-    const inputs = [];
-  
-    for (let y = 0; y < walkableMask.length; y += BOX) {
-      for (let x = 0; x < walkableMask[0].length; x += BOX) {
-        // Check if the center of a 20x20 cell is walkable
-        let cx = x, cy = y;
-        if (
-          cx - 10 < 0 || cy - 10 < 0 ||
-          cx + 9 >= walkableMask[0].length || cy + 9 >= walkableMask.length
-        ) continue;
-  
-        if (
-          walkableMask[cy - 10][cx - 10] &&
-          walkableMask[cy - 10][cx + 9] &&
-          walkableMask[cy + 9][cx - 10] &&
-          walkableMask[cy + 9][cx + 9]
-        ) {
-          // Normalize input positions to [0,1]
-          const normX = cx / walkableMask[0].length;
-          const normY = cy / walkableMask.length;
-          inputs.push([normX, normY]);
-        }
-      }
-    }
-  
-    const inputTensor = tf.tensor2d(inputs);
-    const output = model.predict(inputTensor);
-    console.log("📐 Output shape:", output.shape);
-
-    output.print();
-  }
-  
-  let trainingInputs = [];
+let trainingInputs = [];
 let trainingLabels = [];
+
+let legalPositions = []; // add this near top
+function getAlignedLegalPositions() {
+  return legalPositions.map(([x, y]) => [
+    Math.round(x / BOX) * BOX,
+    Math.round(y / BOX) * BOX
+  ]);
+}
+
 
 async function generateTrainingDataFromPolicy() {
   const state = await parseCanvasToState();
@@ -850,6 +725,7 @@ async function generateTrainingDataFromPolicy() {
 
   trainingInputs = [];
   trainingLabels = [];
+  legalPositions = [];  // <-- add this
 
   for (const key in valuePolicy) {
     const [x, y] = key.split(",").map(Number);
@@ -862,34 +738,13 @@ async function generateTrainingDataFromPolicy() {
 
     trainingInputs.push([normX, normY]);
     trainingLabels.push(oneHot);
+    legalPositions.push([x, y]);  // <-- add this
   }
 
   console.log("📊 Training data size:", trainingInputs.length);
 }
 
-async function trainOneEpoch() {
-    if (trainingInputs.length === 0 || trainingLabels.length === 0) {
-      alert("⚠️ Run generateTrainingDataFromPolicy() first.");
-      return;
-    }
-  
-    const xs = tf.tensor2d(trainingInputs);
-    const ys = tf.tensor2d(trainingLabels);
-  
-    const history = await model.fit(xs, ys, {
-      epochs: 1,
-      shuffle: true,
-      verbose: 0
-    });
-  
-    const loss = history.history.loss[0];
-    console.log("📉 Loss after epoch:", loss.toFixed(6));
-  
-    xs.dispose();
-    ys.dispose();
-  }
 
-  
   function isCellWalkable(cx, cy, mask) {
     if (cx - 10 < 0 || cy - 10 < 0 || cy + 9 >= mask.length || cx + 9 >= mask[0].length) return false;
     return (
@@ -901,40 +756,66 @@ async function trainOneEpoch() {
   }
 
   const nnArrowMap = new Map();
-
-function drawNNArrowAtState(x, y, action) {
-  const key = `${x},${y}`;
-  if (nnArrowMap.has(key)) {
-    canvas.remove(nnArrowMap.get(key));
+  function drawNNArrowAtState(x, y, action) {
+    const key = `${x},${y}`;
+    if (nnArrowMap.has(key)) {
+      canvas.remove(nnArrowMap.get(key));
+    }
+  
+    const arrow = new fabric.Text("→", {
+      left: x + 2,
+      top: y - 8,
+      fontSize: 16,
+      fill: "purple",
+      originX: 'center',
+      originY: 'center',
+      selectable: false,
+      evented: false,
+      angle: [-90, 90, 180, 0][action],  // ✅ Corrected mapping
+    });
+  
+    canvas.add(arrow);
+    canvas.bringToFront(arrow);
+    nnArrowMap.set(key, arrow);
   }
-
-  const arrow = new fabric.Text("→", {
-    left: x + 2,
-    top: y - 8,
-    fontSize: 16,
-    fill: "purple",
-    originX: 'center',
-    originY: 'center',
-    selectable: false,
-    evented: false,
-    angle: [0, 180, -90, 90][action],
-  });
-
-  canvas.add(arrow);
-  canvas.bringToFront(arrow);
-  nnArrowMap.set(key, arrow);
-}
-
-function createAndStoreModel() {
+  
+  function createAndStoreModel() {
     const lrInput = parseFloat(document.getElementById("learningRateInput").value);
     const learningRate = isNaN(lrInput) || lrInput <= 0 ? 0.01 : lrInput;
   
     tfModel = tf.sequential();
-    tfModel.add(tf.layers.dense({ inputShape: [2], units: 32, activation: 'relu' }));
-    tfModel.add(tf.layers.dense({ units: 32, activation: 'relu' }));
-    tfModel.add(tf.layers.dense({ units: 4, activation: 'softmax' }));
+  
+    // First dense + activation
+    tfModel.add(tf.layers.dense({
+      inputShape: [2],
+      units: 64,
+      kernelInitializer: 'heNormal'
+    }));
+    tfModel.add(tf.layers.leakyReLU());
+  
+    // Second dense + activation
+    tfModel.add(tf.layers.dense({
+      units: 32,
+      kernelInitializer: 'heNormal'
+    }));
+    tfModel.add(tf.layers.leakyReLU());
+  
+    // Third dense + activation
+    tfModel.add(tf.layers.dense({
+      units: 16,
+      kernelInitializer: 'heNormal'
+    }));
+    tfModel.add(tf.layers.leakyReLU());
+  
+    // Output layer (softmax)
+    tfModel.add(tf.layers.dense({
+      units: 4,
+      activation: 'softmax',
+      kernelInitializer: 'glorotUniform'
+    }));
   
     const optimizer = tf.train.adam(learningRate);
+  
     tfModel.compile({
       optimizer,
       loss: 'categoricalCrossentropy',
@@ -944,7 +825,84 @@ function createAndStoreModel() {
     console.log(`✅ Model created with learning rate: ${learningRate}`);
   }
   
+  
+  function drawNNPolicyArrows(outputTensor, positions) {
+    outputTensor.array().then(predictions => {
+      positions.forEach(([x, y], i) => {
+        const action = predictions[i].indexOf(Math.max(...predictions[i]));
+        drawNNArrowAtState(x, y, action);
+      });
+    });
+  }
+  
 
+  async function checkNNPolicyPathLength(nnModel, alignedLegalPositions) {
+    const resultElement = document.getElementById("pathCheckResult");
+  
+    const state = await parseCanvasToState();
+    const { agent_pos, goal_pos, walkableMask } = state;
+    const goalX = goal_pos[0], goalY = goal_pos[1];
+    let [x, y] = agent_pos;
+  
+    const getKey = (x, y) => `${x},${y}`;
+    const directions = {
+      0: [0, -BOX], 1: [0, BOX], 2: [-BOX, 0], 3: [BOX, 0]
+    };
+  
+    const inputs = tf.tensor2d(alignedLegalPositions.map(([x, y]) => [
+      x / canvas.width,
+      y / canvas.height
+    ]));
+    const predictions = await nnModel.predict(inputs).array();
+    inputs.dispose();
+  
+    const nnPolicy = new Map();
+    for (let i = 0; i < alignedLegalPositions.length; i++) {
+      const [x, y] = alignedLegalPositions[i];
+      const action = predictions[i].indexOf(Math.max(...predictions[i]));
+      nnPolicy.set(getKey(x, y), action);
+    }
+  
+    const visited = new Set();
+    for (let step = 0; step < 500; step++) {
+      const key = getKey(x, y);
+      if (
+        (Math.abs(x - goalX) === BOX && y === goalY) ||
+        (Math.abs(y - goalY) === BOX && x === goalX)
+      ) {
+        resultElement.innerText = `✅ NN path found! Length: ${step}`;
+        alert(`🎉 NN reached the goal in ${step} steps! Training stopped.`);
+        return true;
+      }
+  
+      if (visited.has(key)) {
+        resultElement.innerText = "❌ NN policy loops or is invalid (cycle)";
+        return false;
+      }
+  
+      visited.add(key);
+      const action = nnPolicy.get(key);
+      if (action === undefined) {
+        resultElement.innerText = "❌ NN policy missing action at: " + key;
+        return false;
+      }
+  
+      const [dx, dy] = directions[action];
+      const nextX = x + dx, nextY = y + dy;
+  
+      if (!isCellWalkable(nextX, nextY, walkableMask)) {
+        resultElement.innerText = `❌ NN step to (${nextX},${nextY}) is not walkable`;
+        return false;
+      }
+  
+      x = nextX;
+      y = nextY;
+    }
+  
+    resultElement.innerText = "❌ NN policy failed within step limit";
+    return false;
+  }
+  
   async function trainNEpochs() {
     if (!tfModel) {
       alert("⚠️ Create the model first.");
@@ -958,35 +916,144 @@ function createAndStoreModel() {
       return;
     }
   
-    const optimizer = tf.train.adam(lr);
-    const inputs = tf.tensor2d(legalPositions.map(([x, y]) => [
-      x / canvas.width,
-      y / canvas.height
-    ]));
-    const labels = tf.tensor2d(legalPositions.map(([x, y]) => {
-      const key = `${x},${y}`;
-      const action = valuePolicy[key];
-      const oneHot = [0, 0, 0, 0];
-      if (action !== undefined) oneHot[action] = 1;
-      return oneHot;
-    }));
+    const BATCH_SIZE = 1;
   
     for (let epoch = 0; epoch < n; epoch++) {
-      const loss = await optimizer.minimize(() => {
-        const preds = nnModel.predict(inputs);
-        return tf.losses.softmaxCrossEntropy(labels, preds).mean();
-      }, true);
+      // Shuffle data
+      const shuffled = tf.util.createShuffledIndices(legalPositions.length);
   
-      const lossVal = await loss.data();
-      console.log(`🧠 Epoch ${epoch + 1}/${n} — Loss: ${lossVal[0].toFixed(6)}`);
+      for (let i = 0; i < legalPositions.length; i += BATCH_SIZE) {
+        const batchIndices = shuffled.slice(i, i + BATCH_SIZE);
+        
+        const batchInputsArray = [];
+        const batchLabelsArray = [];
+        
+        for (const idx of batchIndices) {
+          const [x, y] = legalPositions[idx];
+          const key = `${x},${y}`;
+          const action = valuePolicy[key];
+        
+          if (action !== undefined && !isNaN(x) && !isNaN(y)) {
+            const input = [x / canvas.width, y / canvas.height];
+            const label = [0, 0, 0, 0];
+            label[action] = 1;
+        
+            batchInputsArray.push(input);
+            batchLabelsArray.push(label);
+          }
+        }
+        
+        if (batchInputsArray.length === 0) continue; // skip empty batches
+        
+        const batchInputs = tf.tensor2d(batchInputsArray);
+        const batchLabels = tf.tensor2d(batchLabelsArray);
+        
+        // Train on this batch
+        const history = await tfModel.trainOnBatch(batchInputs, batchLabels);
   
-      const output = nnModel.predict(inputs);
-      drawNNPolicyArrows(output, legalPositions);
+        batchInputs.dispose();
+        batchLabels.dispose();
+      }
   
-      await tf.nextFrame(); // Allow canvas/UI updates
+      // Log loss after full epoch
+      const preds = tfModel.predict(tf.tensor2d(legalPositions.map(([x, y]) => [
+        x / canvas.width,
+        y / canvas.height
+      ])));
+      drawNNPolicyArrows(preds, legalPositions);
+  
+      const loss = await tfModel.evaluate(
+        tf.tensor2d(legalPositions.map(([x, y]) => [x / canvas.width, y / canvas.height])),
+        tf.tensor2d(legalPositions.map(([x, y]) => {
+          const key = `${x},${y}`;
+          const action = valuePolicy[key];
+          const oneHot = [0, 0, 0, 0];
+          if (action !== undefined) oneHot[action] = 1;
+          return oneHot;
+        }))
+      );
+      console.log(`🧠 Epoch ${epoch + 1}/${n} — Loss: ${loss[0].dataSync()[0].toFixed(6)}`);
+  
+      // Every 10 epochs, check for successful path
+      if ((epoch + 1) % 10 === 0) {
+        const foundPath = await checkNNPolicyPathLength(tfModel, legalPositions);
+        if (foundPath) {
+          break;
+        }
+      }
+  
+      await tf.nextFrame(); // Allow UI updates
+    }
+  }
+  
+  
+  
+
+  async function followNNPolicy() {
+    if (!tfModel) {
+      alert("⚠️ Neural network model not initialized.");
+      return;
     }
   
-    inputs.dispose();
-    labels.dispose();
+    stopFollowingPolicy = false;
+    console.log("🤖 Following neural network policy...");
+  
+    const directions = {
+      0: [0, -BOX],  // up
+      1: [0, BOX],   // down
+      2: [-BOX, 0],  // left
+      3: [BOX, 0],   // right
+    };
+  
+    for (let steps = 0; steps < 1000; steps++) {
+      if (stopFollowingPolicy) {
+        console.log("🛑 NN policy execution manually stopped.");
+        break;
+      }
+  
+      const cx = Math.floor((greenBox.left + BOX / 2) / BOX) * BOX;
+      const cy = Math.floor((greenBox.top + BOX / 2) / BOX) * BOX;
+  
+      const normX = cx / canvas.width;
+      const normY = cy / canvas.height;
+  
+      const prediction = await tfModel.predict(tf.tensor2d([[normX, normY]])).array();
+      const action = prediction[0].indexOf(Math.max(...prediction[0]));
+  
+      const [dx, dy] = directions[action];
+      const nx = greenBox.left + dx;
+      const ny = greenBox.top + dy;
+  
+      // Check bounds
+      if (nx < 0 || nx + BOX > canvas.width || ny < 0 || ny + BOX > canvas.height) {
+        console.warn("🚧 Out-of-bounds move detected. Stopping.");
+        break;
+      }
+  
+      // Check if destination is walkable (white)
+      const walkable = await isWhiteUnderBox(nx, ny);
+      if (!walkable) {
+        console.warn(`🚫 NN suggested illegal move to (${nx}, ${ny}) — black area.`);
+        break;
+      }
+  
+      // Move the green box
+      greenBox.set({ left: nx, top: ny });
+      canvas.renderAll();
+  
+      // Check goal proximity
+      const goal = getGoalCenter();
+      const dist = Math.sqrt((nx + BOX / 2 - goal.x) ** 2 + (ny + BOX / 2 - goal.y) ** 2);
+      console.log(`📏 Distance to goal: ${dist.toFixed(2)}`);
+  
+      if (dist < BOX + 1) {
+        console.log("🏁 Goal reached using NN policy!");
+        break;
+      }
+  
+      await new Promise(r => setTimeout(r, 100));
+    }
+  
+    console.log("🧠 Finished following NN policy.");
   }
   
