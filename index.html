@@ -2,126 +2,110 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Green Box Controller</title>
+  <title>Value Iteration Visualizer</title>
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-  <style>
-    canvas {
-      border: 1px solid #555;
-    }
-
-    #controls {
-      margin-top: 10px;
-    }
-
-    button {
-      margin: 4px;
-      padding: 6px 12px;
-      font-size: 16px;
-    }
-
-    input[type="number"] {
-      width: 80px;
-      margin-left: 4px;
-    }
-
-    #strokeWidth {
-      width: 150px;
-    }
-
-    #heatmap-legend {
-      position: absolute;
-      top: 50%;
-      left: 1020px; /* 1000px canvas width + 20px gap */
-      transform: translateY(-50%);
-      padding: 8px;
-      background: white;
-      border: 1px solid #ccc;
-      font-family: sans-serif;
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .heatbar {
-      width: 12px;
-      height: 120px;
-      background: linear-gradient(to bottom, red, green);
-      border: 1px solid #aaa;
-      margin: 4px auto;
-    }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
 </head>
 <body>
-  <h2>Draw a Path From the Green Box to the Red Box</h2>
-  <p>
-    Click run value iteration to run the planning algorithm in the background until convergence of 0.0001 is reached.
-    You can override the convergence threshold and discount rate in the input fields before running value iteration.
-    After running value iteration, click on run optimal policy to see the green box follow the best path that was reached.
-    You can also see the amount of iterations value iteration took to reach convergence where it says "iterations" in bold.
-  </p>
-  <p>
-    Click run live value iteration to see what decisions are made live. Click it again to see if the decisions update on a new pass.
-    You can control how fast the live iteration goes with the speed delay field thing, and you can have it run multiple times
-    in a row automatically with the iterations field. Refresh the page to try a new maze with live value iteration (current bug)
-  </p>
+  <header>
+    <h1>Value Iteration Visualizer</h1>
+    <p>
+      Draw a maze, set parameters, and visualize optimal policies in action.
+      <br>
+      <a href="https://michaelfellner.github.io" style="color: #bbdefb; text-decoration: underline; font-weight: 500;">← Back to Homepage</a>
+    </p>
+  </header>
 
-  <canvas id="c" width="1000" height="600"></canvas>
+  <!-- 🧠 How it works explanation -->
+  <section style="max-width: 900px; margin: 2rem auto 0 auto; font-size: 16px; line-height: 1.6; background: white; padding: 1.2rem 1.5rem; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+    <strong>How it works:</strong><br>
+    Use your mouse to draw white paths on the black grid. The green box represents the agent's start, and the purple box is the goal. Once you draw a walkable environment, press <em>"Run Value Iteration"</em> to compute the optimal path. The heatmap shows how "confident" the agent is at each cell. You can then make the agent follow the computed policy, or run a live step-by-step version of value iteration to watch it update in real time.
+  </section>
 
-  <!-- Heatmap legend (positioned absolutely to the right of the canvas) -->
-  <div id="heatmap-legend">
-    <div style="margin-bottom: 4px;">Value Heatmap</div>
-    <div>Insecurr</div>
-    <div class="heatbar"></div>
-    <div>Confident</div>
+  <main>
+    <!-- everything else remains the same -->
+
+    <div class="canvas-outer">
+    <div class="canvas-container">
+      <canvas id="c" width="1000" height="600"></canvas>
+    </div>
+
+    <div class="heatmap-column">
+      <button class="heatmap-btn" onclick="resetGreenBox()">🔄 Reset Agent</button>
+
+      <div id="heatmap-legend">
+        <div class="legend-title">Value Heatmap</div>
+        <div>Insecure</div>
+        <div class="heatbar"></div>
+        <div>Confident</div>
+      </div>
+
+      <button class="heatmap-btn" onclick="resetEverything()">Reset Everything</button>
+    </div>
   </div>
 
-  <div id="controls">
-    <!-- stroke-width slider for drawing -->
-    <label>Stroke Width:
-      <input type="range" id="strokeWidth" min="60" max="100" value="5">
-    </label>
-    <br><br>
 
-    <!-- manual move buttons -->
-    <button onclick="manualMove(0)">↑ Up</button>
-    <button onclick="manualMove(1)">↓ Down</button>
-    <button onclick="manualMove(2)">← Left</button>
-    <button onclick="manualMove(3)">→ Right</button>
-    <br><br>
+  <div class="controls-panel">
+    <section class="section">
+      <h2>Drawing & Movement</h2>
+      <label>Stroke Width:
+        <input type="range" id="strokeWidth" min="60" max="100" value="5">
+      </label>
+      <div class="dpad-grid">
+  <div></div>
+  <button onclick="manualMove(0)">↑</button>
+  <div></div>
 
-    <button onclick="resetEverything()">Reset Everything</button>
-    <br>
+  <button onclick="manualMove(2)">←</button>
+  <div></div>
+  <button onclick="manualMove(3)">→</button>
 
-    <!-- γ and ε inputs -->
-    <label>discount rate:
-      <input id="gamma" type="number" step="0.01" placeholder="0.99">
-    </label>
-    <label>convergence threshold:
-      <input id="threshold" type="number" step="1e-6" placeholder="1e-4">
-    </label>
-    <br><br>
+  <div></div>
+  <button onclick="manualMove(1)">↓</button>
+  <div></div>
+</div>
 
-    <!-- RL buttons -->
-    <button onclick="runValueIterationClientSide()">Run Value Iteration</button>
-    <button onclick="followValuePolicy()">Follow Optimal Policy</button>
-    <button onclick="prepareLiveValueIteration()">Run Live Value Iteration</button>
+    </section>
+
+    <section class="section">
+      <h2>Value Iteration Settings</h2>
+      <label>Discount γ:
+        <input id="gamma" type="number" step="0.01" placeholder="0.99">
+      </label>
+      <label>Convergence ε:
+        <input id="threshold" type="number" step="1e-6" placeholder="1e-4">
+      </label>
+      <div class="button-row">
+        <button onclick="runValueIterationClientSide()">Run Value Iteration</button>
+        <button onclick="followValuePolicy()">Follow Optimal Policy</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Live Value Iteration</h2>
+      <label>Speed (ms delay):
+        <input id="delayMs" type="number" value="10">
+      </label>
+      <label>Iterations:
+        <input id="liveIters" type="number" value="1">
+      </label>
+      <div class="button-row">
+        <button onclick="prepareLiveValueIteration()">Run Live Iteration</button>
+        <button onclick="followValuePolicy()">Follow Live Policy</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Status</h2>
+      <div id="iterationCount"><strong>Iterations:</strong> -</div>
+      <div id="deltaDisplay"><em>Δ:</em> -</div>
+      <div id="pathCheckResult">Path length: -</div>
+    </section>
   </div>
+</main>
 
-  <div id="iterationCount" style="margin-top: 10px; font-weight: bold;">Iterations: -</div>
-  <button onclick="resetGreenBox()">Reset Green Box</button>
-  <button onclick="followValuePolicy()">Follow Live Policy</button>
-  <div id="deltaDisplay" style="margin-top: 4px; font-style: italic;">Δ: -</div>
 
-  <label>Speed (ms delay):
-    <input id="delayMs" type="number" placeholder="120" value="120">
-  </label>
-  <label>Iterations:
-    <input id="liveIters" type="number" placeholder="1" value="1">
-  </label>
-
-  <p id="pathCheckResult">Path length: -</p>
-  <button onclick="checkPolicyPathLength()">Check Policy Path Length</button>
-
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
   <script src="draw.js"></script>
 </body>
 </html>

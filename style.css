@@ -1,0 +1,227 @@
+/* Reset and base layout */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", sans-serif;
+  background-color: #f4f6f8;
+  color: #333;
+}
+
+header {
+  text-align: center;
+  padding: 1.2rem 1rem 0.8rem;
+  background-color: #1e88e5;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+header p {
+  margin: 0.5rem 0 0;
+  font-weight: 300;
+}
+
+main {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0;
+}
+
+/* Canvas and heatmap */
+.canvas-outer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.canvas-container {
+  position: relative;
+  width: 1000px; /* match canvas width */
+  margin: 0 auto;
+}
+
+canvas {
+  display: block;
+  width: 1000px;
+  height: 600px;
+  border: 3px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Now it's truly off to the right, not shifting layout */
+#heatmap-legend {
+  /* OLD: remove position absolute and related offsetting */
+  /* position: absolute; */
+  /* top: 50%; */
+  /* left: 100%; */
+  /* margin-left: 20px; */
+  /* transform: translateY(-50%); */
+
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  text-align: center;
+  font-size: 13px;
+  width: 90px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+
+.legend-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.heatbar {
+  width: 16px;
+  height: 120px;
+  background: linear-gradient(to bottom, red, green);
+  border-radius: 4px;
+  border: 1px solid #aaa;
+  margin: 6px auto;
+}
+
+
+
+/* Control panel */
+.controls-panel {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.section {
+  background: white;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.section h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.5rem;
+  color: #1976d2;
+}
+
+label {
+  display: block;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+input[type="number"],
+input[type="range"] {
+  padding: 6px;
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+button {
+  padding: 8px 14px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: #1976d2;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+button:hover {
+  background-color: #135ba1;
+}
+
+#iterationCount,
+#deltaDisplay,
+#pathCheckResult {
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.canvas-outer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.heatmap-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 600px; /* Already good */
+  padding: 10px 0;
+  gap: 12px; /* new: adds some breathing room between elements */
+}
+
+.heatmap-btn {
+  width: 140px;
+  padding: 16px 16px; /* increased vertical padding */
+  height: 150px;
+  font-size: 14px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+
+.heatmap-btn:hover {
+  background-color: #135ba1;
+}
+
+
+.dpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 50px);
+  grid-template-rows: repeat(3, 50px);
+  gap: 6px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.dpad-grid button {
+  width: 100%;
+  height: 100%;
+  font-size: 18px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.dpad-grid button:hover {
+  background-color: #135ba1;
+}

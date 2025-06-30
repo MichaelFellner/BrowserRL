@@ -423,6 +423,8 @@ async function runValueIterationClientSide() {
   iterationDisplay.innerText = "Iterations: " + result.iterations;
   alert("✅ Value iteration done!");
   console.log("📌 Policy Keys:", Object.keys(valuePolicy));
+  await checkPolicyPathLength();
+
 }
 
 function deltaToColor(value, max) {
@@ -597,6 +599,7 @@ async function runLiveValueIteration() {
       valuePolicy = Object.fromEntries(livePolicyMap);
       iterationDisplay.innerText = "Iterations: " + liveIterationCount;
       document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
+      checkPolicyPathLength();
     }
   } finally {
     resetGreenBox();
