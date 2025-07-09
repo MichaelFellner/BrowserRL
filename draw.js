@@ -102,6 +102,7 @@ function removeAlgorithmHighlighting() {
 function switchTutorialPart(partNumber) {
   currentTutorialPart = partNumber;
   console.log("🔄 Switching to tutorial part", partNumber);
+  resetEverything();
   
   // Update body class for mathematical term visibility
   document.body.className = document.body.className.replace(/tutorial-part-\d+/g, '');
@@ -1125,7 +1126,7 @@ function resetEverything() {
     cancelAnimationFrame(window._liveLoop);
     window._liveLoop = null;
   }
-liveValueIterationState = null;
+ liveValueIterationState = null;
 
   // Clear canvas
   canvas.clear();
