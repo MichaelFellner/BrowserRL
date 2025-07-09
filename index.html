@@ -2,109 +2,518 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Value Iteration Visualizer</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Learn Value Iteration!</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header>
-    <h1>Value Iteration Visualizer</h1>
+    <h1>Learn Value Iteration!</h1>
     <p>
-      Draw a maze, set parameters, and visualize optimal policies in action.
+      <span id="header-subtitle">Learn how value iteration works step by step</span>
       <br>
       <a href="https://michaelfellner.github.io" style="color: #bbdefb; text-decoration: underline; font-weight: 500;">← Back to Homepage</a>
     </p>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="tutorial-mode-btn" onclick="switchToTutorialMode()">Tutorial Mode</button>
+      <button class="mode-btn" id="playground-mode-btn" onclick="switchToPlaygroundMode()">Playground Mode</button>
+    </div>
   </header>
 
-  <!-- 🧠 How it works explanation -->
-  <section style="max-width: 900px; margin: 2rem auto 0 auto; font-size: 16px; line-height: 1.6; background: white; padding: 1.2rem 1.5rem; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-    <strong>How it works:</strong><br>
-    Use your mouse to draw white paths on the black grid. The green box represents the agent's start, and the purple box is the goal. Once you draw a walkable environment, press <em>"Run Value Iteration"</em> to compute the optimal path. The heatmap shows how "confident" the agent is at each cell. You can then make the agent follow the computed policy, or run a live step-by-step version of value iteration to watch it update in real time.
+  <!-- Tutorial Mode Explanation -->
+  <section id="tutorial-explanation" class="tutorial-only" style="max-width: 900px; margin: 2rem auto 0 auto;">
+    <!-- Tutorial Part 1 -->
+    <div id="tutorial-part-1" class="tutorial-part">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #00ff1a; margin: 0;">Tutorial Part 1: State, Actions, and the Value Function</h2>
+        <div class="tutorial-navigation" style="margin-top: 1rem;">
+          <button onclick="switchTutorialPart(1)" id="part-1-btn" class="tutorial-nav-btn active">Part 1</button>
+          <button onclick="switchTutorialPart(2)" id="part-2-btn" class="tutorial-nav-btn">Part 2</button>
+          <button onclick="switchTutorialPart(3)" id="part-3-btn" class="tutorial-nav-btn">Part 3</button>
+          <button onclick="switchTutorialPart(4)" id="part-4-btn" class="tutorial-nav-btn">Part 4</button>
+        </div>
+      </div>
+      
+      <div class="tutorial-step">
+        <h3>Introduction</h3>
+        <p>Welcome to the Value Iteration Tutorial! Our goal is to understand this algorithm below. Doing so it essential for learning more
+            about reinforcement learning. In this part, we will learn 5 key terms:
+            <ul>
+                <li>
+                    <b>Agent</b>: This is the thing that learns by interacting with the environment. In the maze below, 
+                    the green square is our agent.   
+                </li>
+                <li>
+                    <b>State</b>: States compose an environment. In the maze below, every single place the agent can be is a different
+                    state. The set of all states is called the <i>state space</i>. If you draw below, you'll create more states, (you'll 
+                    increase the size of the state space)!
+                </li>
+                <li>
+                    <b>Action</b>: An action is something the agent can do to interact with the environment. The <i>action space</i> is the set
+                    of all actions.
+                </li>
+                <li>
+                    <b>Value Function</b>: The value function is a function, V(s). It takes in a state, and outputs its value. Most of the time, 
+                    some states are more valuable than others. For example, states closer to the goal will tend to have higher value than state 
+                    further away. 
+                </li>
+                <li>
+                    <b>Policy</b>: A policy is a roadmap for the agent to navigate its environment. It tells the agent what actions to take 
+                    in each state. Technically, the policy is a function, policy(s) that takes in a state and outputs an action. Its possible for 
+                    a policy to be bad and lead an agent to taking bad actions. However, if we have the correct value function, it's possible to 
+                    derive the <i>optimal policy</i>, which tells the agent the <i>best</i> action to take at each state!
+                </li>
+            </ul>
+        Using these terms, we can now say that the algorithm <i>Value Iteration</i> is an algorithm used to find the correct value function and thus
+        allow the agent to use the optimal policy!
+      </div>
+      
+    </div>
+
+    <!-- Tutorial Part 2 -->
+    <div id="tutorial-part-2" class="tutorial-part" style="display: none;">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #0dff00; margin: 0;">Tutorial Part 2: Putting the <i>Iteration</i> in Value Iteration</h2>
+        <div class="tutorial-navigation" style="margin-top: 1rem;">
+          <button onclick="switchTutorialPart(1)" id="part-1-btn-2" class="tutorial-nav-btn">Part 1</button>
+          <button onclick="switchTutorialPart(2)" id="part-2-btn-2" class="tutorial-nav-btn active">Part 2</button>
+          <button onclick="switchTutorialPart(3)" id="part-3-btn-2" class="tutorial-nav-btn">Part 3</button>
+          <button onclick="switchTutorialPart(4)" id="part-4-btn-2" class="tutorial-nav-btn">Part 4</button>
+        </div>
+      </div>
+      
+      <div class="tutorial-step">
+        <h3><span data-highlight-part="2">Chaos to Order</span></h3>
+        <p>Value iteration starts by assigning either random values, or some constant value (like 0) to every state. At this point
+            the value function is inaccurate. (See the <b>first</b> orange highlighted line). But ultimately, we will get an accurate value for each 
+            state. We'll do this by <i>iterating</i> through every single state in the state-space (See the <b>second</b> orange highlighted line). 
+            Then, for each state, we update its value to something that, on average, is more accurate. (See part 3 for how its updated). 
+            V(s) is the current value of a state, 
+            V'(s) denotes the next value of a state. The <b>third</b> orange line is saying that V'(s) is a result of what is happening
+            on the right side of the arrow. The <b>fourth</b> orange line then says to update the value function
+            to use the new values. 
+        </p>
+      </div>
+      
+      <div class="tutorial-step">
+        <h3><span data-highlight-part="2-alt">When do we Stop?</span></h3>
+        <p>The intuition for when we stop looping through all of the states and improving the value function is that we stop once any new improvements become 
+            very very small. That is where this symbol, Δ, comes into play. Δ is the difference between the new value function and the old value function. 
+            If Δ is small, then we stop, and value iteration is complete!
+        </p>
+        <p>
+        We start by setting Δ to zero (line X). It will not stay zero for long. We then start looping through all of the states and update their values 
+        by getting V'(s). At this point we can check what the absolute difference is between the new value, V'(s) is, and the old value, V(s) is. It's likely 
+        that this difference will be greater than 0. So when we get to line X, we update Δ to be whatever is higher, the current Δ or |V'(s) - V(s)|. So let's say that 
+        |V'(s) - V(s)| = 10, then Δ will now be 10, since the current Δ started at 0. Then on the next state, maybe |V'(s) - V(s)| = 20. When we then check what's higher,
+        the current Δ or |V'(s) - V(s)|, 20 will be more than 10, therefore Δ will now equal 20. In this way, Δ ends up equalling the largest difference found 
+        for a state after looping through all of them.
+        </p>
+        <p>
+        After looping through each state, we check if Δ, the largest difference between any state's original value V(s) and its updated value, V(s') is less than or equal 
+        some small number denoted as θ. If it is, then we are done! Behind the scenes, this website uses 0.0001 as θ, meaning that once the difference between the new value function and the old value function is less than or equal to 0.0001, 
+        we assume that the value function is accurate. In playground mode, you can experiment using different values of θ. 
+        </p>
+      </div>
+    </div>
+
+    <!-- Tutorial Part 3 -->
+    <div id="tutorial-part-3" class="tutorial-part" style="display: none;">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #00ff11; margin: 0;">Tutorial Part 3: Step-by-Step Analysis</h2>
+        <div class="tutorial-navigation" style="margin-top: 1rem;">
+          <button onclick="switchTutorialPart(1)" id="part-1-btn-3" class="tutorial-nav-btn">Part 1</button>
+          <button onclick="switchTutorialPart(2)" id="part-2-btn-3" class="tutorial-nav-btn">Part 2</button>
+          <button onclick="switchTutorialPart(3)" id="part-3-btn-3" class="tutorial-nav-btn active">Part 3</button>
+          <button onclick="switchTutorialPart(4)" id="part-4-btn-3" class="tutorial-nav-btn">Part 4</button>
+        </div>
+      </div>
+      
+      <div class="tutorial-step">
+        <h3>Introducing the Reward Function</h3>
+        <p>It's time to look at that last part of the algorithm. The crucial part when we update the current value of a staet, V(s), and hopefully 
+            make it into something more accurate, V'(s). First we have to introduce one more key term:
+        </p>
+        <ul>
+            <li><b>Reward Function</b>: The reward function, r(s), takes in a state and outputs a reward. Crucially, <i>reward is different
+                than value</i>. A reward function just tells you how immediately rewarding a current state is, but it does not take into 
+                account other states. So say you are at an amusement park and roller coaster A is very fun but has a super long line, while 
+                roller coaster B is kinda fun but has no line. Coaster A will have a higher reward than B, but the beginning of the line 
+                will have a higher <i>value</i> for coaster B than coaster A. 
+            </i></li>
+        </ul>
+      </div>
+      
+      <div class="tutorial-step">
+        <h3><span data-highlight-part="3">How the Value Function Improves</span></h3>
+        <p>We can now understand the purple highlighted part. The way it works is that it finds the action that maximizes r(s') + γV(s'). 
+            s' means next state. Each action brings you to a different s' (most of the time, sometimes multiple actions can lead to the same next state). 
+            r(s') is the reward of the next state, and γV(s') is the value of the next state, multiplied by a constant γ. 
+            <p>γ is the <b>discount rate</b>, and this 
+            determines how much the value of the next state should affect the current state. If it's 0, then that means we don't care about the value of the next 
+            state at all, therefore we only care about the reward. If it's 1 then that means we really care about the value of the next state. γ often equals 0.9, but 
+            in the background of this website, γ is actually set to 1, so it doesn't really matter that much. You can experiment more with γ in playground mode. </p>
+            <p>
+                To bring it all together, all the highlighted line is doing now is checking which action leads to the greatest r(s') + γV(s'), and then updates 
+                V(s) to be that maximum r(s') + γV(s'). 
+            </p>
+        </p>
+      </div> 
+    
+    </div>
+
+    <!-- Tutorial Part 4 -->
+    <div id="tutorial-part-4" class="tutorial-part" style="display: none;">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: #00ff11; margin: 0;">Tutorial Part 4: Final Caveats</h2>
+        <div class="tutorial-navigation" style="margin-top: 1rem;">
+          <button onclick="switchTutorialPart(1)" id="part-1-btn-4" class="tutorial-nav-btn">Part 1</button>
+          <button onclick="switchTutorialPart(2)" id="part-2-btn-4" class="tutorial-nav-btn">Part 2</button>
+          <button onclick="switchTutorialPart(3)" id="part-3-btn-4" class="tutorial-nav-btn">Part 3</button>
+          <button onclick="switchTutorialPart(4)" id="part-4-btn-4" class="tutorial-nav-btn active">Part 4</button>
+        </div>
+      </div>
+      
+      <div class="tutorial-step">
+        <h3>Congratulations!</h3>
+        <p>You've completed the Value Iteration tutorial! You now understand the core concepts of:</p>
+        <ul>
+          <li><strong>States and Actions</strong> - The building blocks of any reinforcement learning environment</li>
+          <li><strong>Value Functions</strong> - How we estimate the worth of being in different states</li>
+          <li><strong>The Iterative Process</strong> - How value iteration gradually improves our estimates</li>
+          <li><strong>Policy Extraction</strong> - How optimal actions emerge from accurate value functions</li>
+        </ul>
+      </div>
+      
+      
+      <div class="tutorial-step">
+        <h3><span data-highlight-part="4">Except for One Tiny Part(s)</span></h3>
+        <p>This whole time we've actually been looking at a slightly simplified version of value iteration. The blue parts are parts that were removed in steps 1-3.</p>
+        <ul>
+            <li><b>P(s'|s,a):</b> This part is relevant if actions operated probablistically. Because this whole time we've been in a deterministic environment, 
+            it was irrelevant. But what this part means is "the probability of going to state s' given you're in state s and taking action a.</li>
+            <li><b>r(s,a,s'):</b>Technically, the reward function is best described not just as r(s'), but as a function of the current state you're in 's',
+            the action you're taking 'a', and also the state you end up in, s' (hence r(s,a,s')). For this environment, r(s') was good enough, but imagine in 
+            a different environment, there's some state s', but to get to it from the north you must go through lava while walking on your hands, but to get to 
+            it from the south, you simply walk through an air conditioned hallway. In this case, you don't want the reward to just factor in the destination, but the journey
+            as well.</li>
+            <li><b>∑<sub>s'</b>: This last little part... is actually a huge deal! In a determinsitic environment, it is not necessary. A "determinsitc environmnet",
+            meaning that each action leads to only one next state 100% of the time. This website is a deterministic environment. But in a probablistic 
+            environment, where actions can potentially lead to multiple different states, this summation term is crucial. What this term means is that 
+        for each action, we can't just take into account r(s') + γV(s') for a single next state, but instead we have to take into account r(s') + γV(s') for 
+            every potential next state! We sum the r(s') + γV(s') for <i>every</i> possible next state, and weigh each [r(s') + γV(s')] by the probability of ending
+        up in that s'. This adds another loop to the value iteration algorithm and causes things to move much slower. It is actually the nature of a probabilistic 
+    environment that is a big reason for why <i>reinforcement learning</i> is used in many cases instead of value iteration. </li>
+        </ul>
+      </div>
+    </div>
   </section>
 
+  <!-- Playground Mode Explanation -->
+  <!-- <section id="playground-explanation" class="playground-only hidden" style="max-width: 900px; margin: 2rem auto 0 auto; font-size: 16px; line-height: 1.6; background: white; padding: 1.2rem 1.5rem; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+    <strong>How it works:</strong><br>
+    Use your mouse to draw white paths on the black grid. The green box represents the agent's start, and the purple box is the goal. Once you draw a walkable environment, press <em>"Run Value Iteration"</em> to compute the optimal path. The heatmap shows how "confident" the agent is at each cell. You can then make the agent follow the computed policy, or run a live step-by-step version of value iteration to watch it update in real time.
+    <br><br>
+    Every position the green box can be is a state, which is denoted with its (x,y) position. For example, the green box starts at state (60, 540).
+    Every state also has a value, V(s). Unfortunately, we don't know what the value of each state is <i>at first</i>. If we did know the value of
+    each state, then we would easily be able to take the <i>optimal action</i> at each state. All we would have to do is see where each action would take 
+    us and then take the action that brings us to the next state with the highest value. For example, we are in state A, and going up will take us to B, left will take us 
+    to C, and down will take us to D, and V(B) = 10, V(C) = 20, and V(D) = 0, we will go left. 
+    <br><br>
+    That is where this algorithm comes into play <i>Value Iteration</i>. This algorithm's goal is to go from having an unknown value function to a known one. To go from 
+    V(s) = 0*, to v(s) = correct_value. And it will do so <i>iteratively</i> (hence the term "iteration"), by going through every single state 
+    and updating its value until it is correct.
+  </section> -->
+
+  <!-- Value Iteration Algorithm Display with Enhanced Highlighting -->
+ <!-- Value Iteration Algorithm Display with Masked Mathematical Terms -->
+<section style="max-width: 900px; margin: 2rem auto; background: #2c3e50; color: #ecf0f1; padding: 2rem; border-radius: 12px; font-family: 'Courier New', monospace; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+  <h3 style="color: #3498db; text-align: center; margin: 0 0 1.5rem 0; font-size: 1.4rem;">Value Iteration Algorithm</h3>
+  <div style="background: #34495e; padding: 1.5rem; border-radius: 8px; line-height: 1.8; font-size: 16px;">
+    <div style="margin-bottom: 1rem;"><span data-highlight-part="2"> <em>V</em> to arbitrary value function; e.g., <em>V(s)</em> = 0 for all <em>s</em></span></div>
+    
+    <div style="margin-bottom: 1rem;"><strong>repeat</strong></div>
+    
+    <!-- Part 2 highlighting: Delta initialization -->
+    <div style="margin-left: 2rem; margin-bottom: 1rem;">
+      <span data-highlight-part="2-alt">Δ ← 0 </span>
+    </div>
+    
+    <!-- Part 2 highlighting: For each state loop -->
+    <div style="margin-left: 2rem; margin-bottom: 1rem;">
+      <span id="algorithm-value-update" data-highlight-part="2"><strong>for each</strong> <em>s</em> ∈ <em>S</em></span>
+    </div>
+
+    <!-- Part 2 and 3 highlighting: Value update equation with complete formula -->
+    <div style="margin-left: 4rem; margin-bottom: 1rem; padding-bottom: 0.5rem;">
+      <span data-highlight-part="2"><em>V'(s)</em> ←</span> 
+      <span data-highlight-part="3">max<sub>a∈A(s)</sub></span>
+      <span class="math-complete-only" data-highlight-part="4">∑<sub>s'</sub></span> <span class="math-complete-only" data-highlight-part="4">P(s'|s,a)</span>
+      <span data-highlight-part="3">[<span class="math-simple-only"><em>r(s')</em></span><span class="math-complete-only"><em><span class="math-complete-only" data-highlight-part="4">r(s,a,s')</em></span> + γ <em>V(s')</em>]</span>
+    </div>
+    
+    <div style="margin-left: 4rem; margin-bottom: 1rem;">
+      <span data-highlight-part="2-alt">Δ ← max(Δ, |<em>V'(s)</em> - <em>V(s)</em>|)</span>
+    </div>
+    
+    <!-- Part 2 highlighting: Value assignment -->
+    <div style="margin-left: 2rem; margin-bottom: 1rem;">
+      <span data-highlight-part="2"><em>V</em> ← <em>V'</em></span>
+    </div>
+    
+    <!-- Part 2 highlighting: Convergence check -->
+    <div style="margin-bottom: 0;">
+      <span data-highlight-part="2-alt"><strong>until</strong> Δ ≤ θ</span>
+    </div>
+  </div>
+  
+  <div style="margin-top: 1rem; font-size: 14px; color: #bdc3c7;">
+    <strong>Where:</strong> <em>S</em> = states, <em>A(s)</em> = actions available in state <em>s</em>, <span class="math-complete-only"><em>P(s'|s,a)</em> = transition probability, </span><span class="math-simple-only"><em>P<sub>a</sub>(s'|s)</em> = transition probability, </span><span class="math-complete-only"><em>r(s,a,s')</em></span><span class="math-simple-only"><em>r(s,a,s')</em></span> = reward, γ = discount factor, θ = convergence threshold
+  </div>
+</section>
+  <!-- I want another thing to appear only for tutorial step 2 here-->
+   <!-- Additional content for tutorial part 2 only -->
+<section id="tutorial-part-2-additional" style="max-width: 900px; margin: 2rem auto; display: none;">  
+    <div class="tutorial-step">
+    <h3>Let's Watch It In Action!</h3>
+    <p>Draw a connecting path again between the start and the goal area, and then click on the <b>run live value iteration function</b>. <br><br>This function will 
+    show you the value of each state updating live as each state is iterated through. The status window will tell you what the current delta is, but you may have 
+    a working path before the delta is less than 0.0001. Arrows will also emerge which represent what the algorithm takes the current best action to be at every state. 
+    You can click the run live value iteration button multiple times too after each run and watch the value function improve. Lastly, you can click the 
+<b>Follow Live Policy</b> button to have the agent start following what the best policy is at the time. It's possible to have the agent get stuck in an infinite loop; at
+any moment, clicking the <b>reset agent</b> button will stop running the live policy.</p>
+  </div>
+</section>
+
+<section id="tutorial-part-1-additional" style="max-width: 900px; margin: 2rem auto; display: none;">  
+    <div class="tutorial-step">
+    <h3>Lets draw a path!</h3>
+        <p>Use your mouse to draw a white path connecting the start area to the goal area (the purple box). Then click "run value iteration". This will cause 
+            the value iteration algorithm to run very quickly in the background. Afterwards you can click "follow optimal policy" and the agent will move to
+            the goal as efficiently as possible! This is because it knows the optimal action at each state. Try experimenting to by drawing difficult mazes, 
+            or having one efficient path to the goal and one direct path! You can click <b>reset agent</b> to move the green box back to the beginning, and <b>reset everything</b>
+            to start completely over and draw again. You can also move the agent manually and see which state its at. When you're done, go to part 2.
+        </p>
+  </div>
+</section>
+
+<section id="tutorial-part-3-additional" style="max-width: 900px; margin: 2rem auto; display: none;">  
+    <div class="tutorial-step">
+    <h3>Time to Look at Things Step by Step</h3>
+        <p>Once again, draw a connecting path (or not it's up to you). Then click the <b>Run Step-by-Step Value Iteration</b> function. This function 
+            will show you the following:
+            <ul>
+               <li>What state is currently being iterated through (see line X).</li> 
+               <li>The result of r(s') + V(s') for each action.</li>
+               <li>What the best action is (ties are broken randomly).</li>
+               <li>What the old V(s) was, and what V'(s) now is.</li>
+            </ul>
+        </p>
+  </div>
+</section>
+
+<section id="tutorial-part-4-additional" style="max-width: 900px; margin: 2rem auto; display: none;"> 
+     <div class="tutorial-step">
+    <h3>Onwards, to Reinforcement Learning!</h3>
+    <p>Understanding Value Iteration is crucial to getting started with <b>Reinforcement Learning</b>. Value iteration can be a powerful algorithm that 
+    can sometimes quickly find an optimal policy and allow an agent to make the best choice. But not every environment can be solved that quickly, especially probablistic environments. 
+    Furthermore, we may not always know the transition function either.</p>
+    <p>Reinforcement learning algorithms involve different ways of finding an optimal policy quickly when the transition function is unknown by interacting with the environment.
+        They often involve making smart learning decisions, like spending less time interacting with states that are quickly determined to be very unlikely to be good. 
+       
+
+    </p>
+      <div style="text-align: center; margin-top: 2rem;">
+        <button onclick="switchToPlaygroundMode()" style="background: #4CAF50; color: white; padding: 15px 30px; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+          🚀 Switch to Playground Mode 
+        </button>
+      </div>
+  </div>
+</section>
+
   <main>
-    <!-- everything else remains the same -->
-
     <div class="canvas-outer">
-    <div class="canvas-container">
-      <canvas id="c" width="1000" height="600"></canvas>
+      <div class="canvas-container">
+        <canvas id="c" width="1000" height="600"></canvas>
+      </div>
+
+      <div class="heatmap-column">
+        <button class="heatmap-btn" onclick="resetGreenBox()">🔄 Reset Agent</button>
+
+        <div id="heatmap-legend">
+          <div class="legend-title">Value Heatmap</div>
+          <div>Low Value</div>
+          <div class="heatbar"></div>
+          <div>High Value</div>
+        </div>
+
+        <button class="heatmap-btn" onclick="resetEverything()">Reset Everything</button>
+      </div>
     </div>
 
-    <div class="heatmap-column">
-      <button class="heatmap-btn" onclick="resetGreenBox()">🔄 Reset Agent</button>
+    <div class="controls-panel">
+      <!-- Tutorial Mode Controls -->
+      <section class="section tutorial-only" id="tutorial-controls">
+        <!-- Part 1 Controls -->
+        <div id="tutorial-part-1-controls" class="tutorial-controls-part">
+          <h2>Tutorial Part 1 Controls</h2>
+          
+          <!-- Agent Status -->
+          <div id="tutorialAgentPosition" style="font-weight: bold; color: #2e7d32; font-size: 16px; margin-bottom: 1rem; padding: 0.8rem; background: #e8f5e9; border-radius: 6px; text-align: center;">
+            The agent is currently at state (60, 540)
+          </div>
+          
+          <!-- Manual Movement -->
+          <div style="margin-bottom: 1.5rem;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #495057;">Try Moving the Agent</h3>
+            <p style="margin: 0 0 1rem 0; color: #666; font-size: 14px;">Use these controls to manually move the green agent around and get familiar with the environment:</p>
+            <div class="dpad-grid" style="margin: 0 auto;">
+              <div></div>
+              <button onclick="manualMove(0)" style="background: #4CAF50;">↑</button>
+              <div></div>
 
-      <div id="heatmap-legend">
-        <div class="legend-title">Value Heatmap</div>
-        <div>Insecure</div>
-        <div class="heatbar"></div>
-        <div>Confident</div>
-      </div>
+              <button onclick="manualMove(2)" style="background: #4CAF50;">←</button>
+              <div style="background: #e0e0e0; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666;">move</div>
+              <button onclick="manualMove(3)" style="background: #4CAF50;">→</button>
 
-      <button class="heatmap-btn" onclick="resetEverything()">Reset Everything</button>
+              <div></div>
+              <button onclick="manualMove(1)" style="background: #4CAF50;">↓</button>
+              <div></div>
+            </div>
+          </div>
+          
+          <!-- Value Iteration Controls -->
+          <div>
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #495057;">Run the Algorithm</h3>
+            <p style="margin: 0 0 1rem 0; color: #666; font-size: 14px;">Once you've drawn a path and explored manually, run value iteration:</p>
+            <div class="button-row">
+              <button onclick="runValueIterationClientSide()" style="background: #4CAF50; font-size: 16px; padding: 12px 20px;">Run Value Iteration</button>
+              <button onclick="followValuePolicy()" style="background: #FF9800; font-size: 16px; padding: 12px 20px;">Follow Optimal Policy</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Part 2 Controls -->
+        <div id="tutorial-part-2-controls" class="tutorial-controls-part" style="display: none;">
+          <h2>Tutorial Part 2 Controls</h2>
+          <label>Speed (ms delay):
+            <input id="tutorialDelayMs" type="number" value="200" min="50" max="1000">
+          </label>
+          <label>Iterations per run:
+            <input id="tutorialLiveIters" type="number" value="1" min="1" max="5">
+          </label>
+          <div class="button-row">
+            <button data-highlight-part="2" onclick="runTutorialLiveValueIteration()" style="background: #2196F3; font-size: 16px; padding: 12px 20px;">Run Live Value Iteration</button>
+            <button onclick="followValuePolicy()" style="background: #FF9800; font-size: 16px; padding: 12px 20px;">Follow Live Policy</button>
+          </div>
+        </div>
+
+        <!-- Part 3 Controls -->
+        <div id="tutorial-part-3-controls" class="tutorial-controls-part" style="display: none;">
+          <h2>Tutorial Part 3 Controls</h2>
+          <p style="color: #666; font-size: 14px; margin-bottom: 1rem;">
+            <strong>Instructions:</strong> Click "Run Step-by-Step" then use "Next Step" to advance through each calculation.
+          </p>
+          <div class="button-row">
+            <button data-highlight-part="3" onclick="runLiveValueIteration_step_by_step()" style="background: #9C27B0; font-size: 16px; padding: 12px 20px;">Run Step-by-Step Value Iteration</button>
+          </div>
+          
+          <!-- Tutorial Step-by-step controls -->
+          <div id="tutorialStepByStepControls" style="display: none; margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+            <div id="tutorialStepByStepInfo" style="margin-bottom: 1rem; font-family: monospace; font-size: 14px; line-height: 1.4; background: white; padding: 1rem; border-radius: 4px; border: 1px solid #ddd;">
+              Ready to start...
+            </div>
+            <div class="button-row">
+              <button data-highlight-part="3" onclick="nextStepClick()" style="background: #4CAF50; color: white;">Next Step</button>
+              <button onclick="stopStepByStep()" style="background: #f44336; color: white;">Stop</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Playground Mode Controls -->
+      <section class="section playground-only">
+        <h2>Agent Status</h2>
+        <div id="agentPosition" style="font-weight: bold; color: #2e7d32; font-size: 16px; margin-bottom: 1rem;">
+          The agent is currently at state (60, 540)
+        </div>
+      </section>
+
+      <section class="section playground-only">
+        <h2>Drawing & Movement</h2>
+        <label>Stroke Width:
+          <input type="range" id="strokeWidth" min="60" max="100" value="5">
+        </label>
+        <div class="dpad-grid">
+          <div></div>
+          <button onclick="manualMove(0)">↑</button>
+          <div></div>
+
+          <button onclick="manualMove(2)">←</button>
+          <div></div>
+          <button onclick="manualMove(3)">→</button>
+
+          <div></div>
+          <button onclick="manualMove(1)">↓</button>
+          <div></div>
+        </div>
+      </section>
+
+      <section class="section playground-only">
+        <h2>Value Iteration Settings</h2>
+        <label>Discount γ:
+          <input id="gamma" type="number" step="0.01" placeholder="0.99">
+        </label>
+        <label>Convergence ε:
+          <input id="threshold" type="number" step="1e-6" placeholder="1e-4">
+        </label>
+        <div class="button-row">
+          <button onclick="runValueIterationClientSide()">Run Value Iteration</button>
+          <button onclick="followValuePolicy()">Follow Optimal Policy</button>
+        </div>
+      </section>
+
+      <section class="section playground-only">
+        <h2>Live Value Iteration</h2>
+        <label>Speed (ms delay):
+          <input id="delayMs" type="number" value="10">
+        </label>
+        <label>Iterations:
+          <input id="liveIters" type="number" value="1">
+        </label>
+        <div class="button-row">
+          <button onclick="prepareLiveValueIteration()">Run Live Iteration</button>
+          <button onclick="followValuePolicy()">Follow Live Policy</button>
+        </div>
+      </section>
+
+      <section class="section playground-only">
+        <h2>Step-by-Step Value Iteration</h2>
+        <div class="button-row">
+          <button onclick="runLiveValueIteration_step_by_step()">Run Step-by-Step</button>
+        </div>
+        
+        <!-- Step-by-step controls (initially hidden) -->
+        <div id="stepByStepControls" style="display: none; margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+          <div id="stepByStepInfo" style="margin-bottom: 1rem; font-family: monospace; font-size: 14px; line-height: 1.4;">
+            Ready to start...
+          </div>
+          <div class="button-row">
+            <button onclick="nextStepClick()" style="background: #4CAF50; color: white;">Next Step</button>
+            <button onclick="stopStepByStep()" style="background: #f44336; color: white;">Stop</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Status</h2>
+        <div id="iterationCount"><strong>Iterations:</strong> -</div>
+        <div id="deltaDisplay" class="playground-only"><em>Δ:</em> -</div>
+        <div id="pathCheckResult">Path length: -</div>
+      </section>
     </div>
-  </div>
-
-
-  <div class="controls-panel">
-    <section class="section">
-      <h2>Drawing & Movement</h2>
-      <label>Stroke Width:
-        <input type="range" id="strokeWidth" min="60" max="100" value="5">
-      </label>
-      <div class="dpad-grid">
-  <div></div>
-  <button onclick="manualMove(0)">↑</button>
-  <div></div>
-
-  <button onclick="manualMove(2)">←</button>
-  <div></div>
-  <button onclick="manualMove(3)">→</button>
-
-  <div></div>
-  <button onclick="manualMove(1)">↓</button>
-  <div></div>
-</div>
-
-    </section>
-
-    <section class="section">
-      <h2>Value Iteration Settings</h2>
-      <label>Discount γ:
-        <input id="gamma" type="number" step="0.01" placeholder="0.99">
-      </label>
-      <label>Convergence ε:
-        <input id="threshold" type="number" step="1e-6" placeholder="1e-4">
-      </label>
-      <div class="button-row">
-        <button onclick="runValueIterationClientSide()">Run Value Iteration</button>
-        <button onclick="followValuePolicy()">Follow Optimal Policy</button>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>Live Value Iteration</h2>
-      <label>Speed (ms delay):
-        <input id="delayMs" type="number" value="10">
-      </label>
-      <label>Iterations:
-        <input id="liveIters" type="number" value="1">
-      </label>
-      <div class="button-row">
-        <button onclick="prepareLiveValueIteration()">Run Live Iteration</button>
-        <button onclick="followValuePolicy()">Follow Live Policy</button>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>Status</h2>
-      <div id="iterationCount"><strong>Iterations:</strong> -</div>
-      <div id="deltaDisplay"><em>Δ:</em> -</div>
-      <div id="pathCheckResult">Path length: -</div>
-    </section>
-  </div>
-</main>
-
+  </main>
 
   <script src="draw.js"></script>
 </body>
