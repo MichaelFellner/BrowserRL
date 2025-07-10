@@ -201,21 +201,40 @@ function switchTutorialPart(partNumber) {
   
   // Keep the old algorithm highlighting for backwards compatibility
   handleAlgorithmHighlighting(partNumber);
+  
+  // Smooth scroll to top after all content changes are complete
+  setTimeout(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }, 100); // Small delay to ensure DOM updates are complete
 }
 
 function switchToTutorialMode() {
   isTutorialMode = true;
+  document.body.className = 'tutorial-mode';
+  
+  // Update button states
+  document.getElementById('introduction-mode-btn').classList.remove('active');
   document.getElementById('tutorial-mode-btn').classList.add('active');
   document.getElementById('playground-mode-btn').classList.remove('active');
+  
+  // Hide introduction elements
+  document.querySelectorAll('.introduction-only').forEach(el => {
+    el.style.display = 'none';
+  });
   
   // Show tutorial elements, hide playground elements
   document.querySelectorAll('.tutorial-only').forEach(el => {
     el.classList.remove('hidden');
     el.classList.add('show');
+    el.style.display = 'block'; // Add this line
   });
   document.querySelectorAll('.playground-only').forEach(el => {
     el.classList.add('hidden');
     el.classList.remove('show');
+    el.style.display = 'none'; // Add this line
   });
   
   // Initialize tutorial part 1
@@ -227,13 +246,17 @@ function switchToTutorialMode() {
 
 function switchToPlaygroundMode() {
   isTutorialMode = false;
+  document.body.className = 'playground-mode';
+  
+  // Update button states
+  document.getElementById('introduction-mode-btn').classList.remove('active');
   document.getElementById('tutorial-mode-btn').classList.remove('active');
   document.getElementById('playground-mode-btn').classList.add('active');
   
-  // Update body class for mathematical term visibility
-  document.body.className = document.body.className.replace(/tutorial-part-\d+/g, '');
-  document.body.classList.add('playground-mode');
-  console.log("📐 Updated body class for math visibility: playground-mode");
+  // Hide introduction elements
+  document.querySelectorAll('.introduction-only').forEach(el => {
+    el.style.display = 'none';
+  });
   
   // Hide all tutorial parts and additional content sections
   document.querySelectorAll('.tutorial-part').forEach(part => {
@@ -256,40 +279,39 @@ function switchToPlaygroundMode() {
   document.querySelectorAll('.tutorial-only').forEach(el => {
     el.classList.add('hidden');
     el.classList.remove('show');
+    el.style.display = 'none'; // Add this line
   });
   document.querySelectorAll('.playground-only').forEach(el => {
     el.classList.remove('hidden');
     el.classList.add('show');
-  })};
-
-// Initialize in tutorial mode when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-  // Set initial state
-  isTutorialMode = true;
-  currentTutorialPart = 1;
-  
-  // Update button states
-  document.getElementById('tutorial-mode-btn').classList.add('active');
-  document.getElementById('playground-mode-btn').classList.remove('active');
+    el.style.display = 'block'; // Add this line
+  });
   
   // Update header subtitle
-  document.getElementById('header-subtitle').textContent = 'Learn how value iteration works step by step';
+  document.getElementById('header-subtitle').textContent = 'Experiment with value iteration parameters';
   
-  // Show tutorial elements, hide playground elements
-  document.querySelectorAll('.tutorial-only').forEach(el => {
-    el.classList.remove('hidden');
-    el.classList.add('show');
-  });
-  document.querySelectorAll('.playground-only').forEach(el => {
-    el.classList.add('hidden');
-    el.classList.remove('show');
-  });
+  // Update body class for mathematical term visibility
+  document.body.classList.add('playground-mode');
+}
+
+// Initialize in tutorial mode when DOM is loaded
+// Initialize in INTRODUCTION mode when DOM is loaded (UPDATED)
+document.addEventListener('DOMContentLoaded', function() {
+  // Set initial state to INTRODUCTION mode
+  isTutorialMode = false;
+  currentTutorialPart = 1;
   
-  // Initialize tutorial part 1
-  switchTutorialPart(1);
+  // Set default canvas size to small
+  resizeCanvas('small');
+  
+  // Start in introduction mode
+  switchToIntroductionMode();
   
   // Initialize agent position display
   updateAgentPositionDisplay(greenStartX, greenStartY);
+  
+  // Initialize delta display
+  updateDeltaDisplay(null);
 });
 
 // Tutorial-specific live value iteration function
@@ -470,6 +492,8 @@ async function runTutorialLiveValueIteration() {
       liveIterationCount++;
       valuePolicy = Object.fromEntries(livePolicyMap);
       iterationDisplay.innerText = "Iterations: " + liveIterationCount;
+      // Update delta display
+      updateDeltaDisplay(delta);
       checkPolicyPathLength();
     }
   } finally {
@@ -494,9 +518,18 @@ const canvas = new fabric.Canvas('c', {
   backgroundColor: 'black',
 });
 
-const W = 1000, H = 600;
+// Canvas size variables (instead of constants)
+// Canvas size variables (change default to small)
+let W = 600, H = 360; // Default to small instead of large
 const R = 50;
 const BOX = 20;
+
+// Canvas size options
+const CANVAS_SIZES = {
+  small: { width: 600, height: 360 },
+  medium: { width: 800, height: 480 },
+  large: { width: 1000, height: 600 }
+};
 
 let stopFollowingPolicy = false;
 
@@ -536,8 +569,9 @@ const redBox = new fabric.Rect({
 canvas.add(bottomLeft, topRight, redBox);
 
 // Initialize green box (agent) at the bottom-left white area
-const greenStartX = Math.round((R + 10) / BOX) * BOX;   // 60 (center x of start)
-const greenStartY = Math.round((H - R - 10) / BOX) * BOX; // 540 (center y of start)
+// Change these from const to let so they can be updated
+let greenStartX = Math.round((R + 10) / BOX) * BOX;   // 60 (center x of start)
+let greenStartY = Math.round((H - R - 10) / BOX) * BOX; // 540 (center y of start)
 const greenBox = new fabric.Rect({
   left: greenStartX - BOX / 2,   // 50
   top: greenStartY - BOX / 2,    // 530
@@ -793,7 +827,27 @@ async function followValuePolicy() {
   
     console.log("🛑 Finished following policy.");
   }
+
+function resizeCanvas(size) {
+  // Update dimensions
+  W = CANVAS_SIZES[size].width;
+  H = CANVAS_SIZES[size].height;
   
+  // Resize the actual canvas element
+  canvas.setDimensions({ width: W, height: H });
+  
+  // Recalculate agent start position based on new canvas size
+  greenStartX = Math.round((R + 10) / BOX) * BOX;
+  greenStartY = Math.round((H - R - 10) / BOX) * BOX;
+  
+  // Clear and recreate everything
+  resetEverything();
+  
+  // Update agent position display
+  updateAgentPositionDisplay(greenStartX, greenStartY);
+  
+  console.log(`Canvas resized to ${size}: ${W}x${H}, agent at (${greenStartX}, ${greenStartY})`);
+}
 
 /** Perform value iteration on the given state (walkable grid) to compute optimal policy */
 function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
@@ -803,6 +857,7 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
   const values = new Map();
   const policyMap = new Map();
   let iterationCount = 0;
+  let finalDelta = 0;
   const directions = {
     0: [0, -boxSize],   // up
     1: [0, boxSize],    // down
@@ -889,12 +944,15 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
     for (const [key, val] of newValues.entries()) {
       values.set(key, val);
     }
+    // Store the final delta for this iteration
+    finalDelta = delta;
     // Check for convergence
     if (delta < threshold) break;
   }
   return {
     policy: Object.fromEntries(policyMap),
-    iterations: iterationCount
+    iterations: iterationCount,
+    finalDelta: finalDelta
   };
 }
 
@@ -918,6 +976,10 @@ async function runValueIterationClientSide() {
   const result = runValueIterationOnState(state, gamma, threshold);
   valuePolicy = result.policy;
   iterationDisplay.innerText = "Iterations: " + result.iterations;
+  
+  // Update delta display after convergence
+  updateDeltaDisplay(result.finalDelta);
+  
   alert("✅ Value iteration done!");
   console.log("📌 Policy Keys:", Object.keys(valuePolicy));
   await checkPolicyPathLength();
@@ -929,6 +991,18 @@ function deltaToColor(value, max) {
   const r = Math.floor(255 * (1 - ratio));
   const g = Math.floor(255 * ratio);
   return `rgb(${r},${g},0)`; // red to green
+}
+
+// Helper function to update delta display consistently across all algorithms
+function updateDeltaDisplay(delta) {
+  const deltaDisplay = document.getElementById("deltaDisplay");
+  if (deltaDisplay) {
+    if (delta === null || delta === undefined) {
+      deltaDisplay.innerText = "Δ: -";
+    } else {
+      deltaDisplay.innerText = `Δ: ${delta.toFixed(6)}`;
+    }
+  }
 }
 
 if (typeof yellowMap === 'undefined') yellowMap = new Map();
@@ -1101,9 +1175,8 @@ async function runLiveValueIteration() {
       liveIterationCount++;
       valuePolicy = Object.fromEntries(livePolicyMap);
       iterationDisplay.innerText = "Iterations: " + liveIterationCount;
-      if (document.getElementById("deltaDisplay")) {
-        document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
-      }
+      // Update delta display
+      updateDeltaDisplay(delta);
       checkPolicyPathLength();
     }
   } finally {
@@ -1126,7 +1199,7 @@ function resetEverything() {
     cancelAnimationFrame(window._liveLoop);
     window._liveLoop = null;
   }
- liveValueIterationState = null;
+  liveValueIterationState = null;
 
   // Clear canvas
   canvas.clear();
@@ -1138,15 +1211,30 @@ function resetEverything() {
   livePolicyMap = null;
   liveArrowMap = null;
   liveIterationCount = 0;
+  
+  // Clear maps
+  if (typeof yellowMap !== 'undefined') yellowMap.clear();
+  if (typeof arrowMap !== 'undefined') arrowMap.clear();
+  if (typeof liveDeltaMap !== 'undefined') liveDeltaMap.clear();
+  
+  // Reset displays
   iterationDisplay.innerText = "Iterations: -";
-  if (document.getElementById("deltaDisplay")) {
-    document.getElementById("deltaDisplay").innerText = "Δ: -";
+  updateDeltaDisplay(null); // Reset delta to show "-"
+  
+  // Reset path check result
+  const pathCheckResult = document.getElementById("pathCheckResult");
+  if (pathCheckResult) {
+    pathCheckResult.innerText = "Path length: -";
   }
+
+  // Recalculate positions based on current canvas size
+  greenStartX = Math.round((R + 10) / BOX) * BOX;
+  greenStartY = Math.round((H - R - 10) / BOX) * BOX;
 
   // Recreate white circles (start and goal areas)
   const bottomLeft = new fabric.Circle({
-    left: R + 10 - R,
-    top: H - R - 10 - R,
+    left: R + 10 - R,              // 10
+    top: H - R - 10 - R,           // varies with H
     radius: R,
     fill: 'white',
     selectable: false,
@@ -1154,8 +1242,8 @@ function resetEverything() {
   });
 
   const topRight = new fabric.Circle({
-    left: W - R - 10 - R,
-    top: R + 10 - R,
+    left: W - R - 10 - R,          // varies with W
+    top: R + 10 - R,               // 10
     radius: R,
     fill: 'white',
     selectable: false,
@@ -1164,8 +1252,8 @@ function resetEverything() {
 
   // Recreate red goal box
   redBox.set({
-    left: W - R - 10 - BOX / 2,
-    top: R + 10 - BOX / 2,
+    left: W - R - 10 - BOX / 2,    // varies with W
+    top: R + 10 - BOX / 2,         // 50
   });
 
   // Recreate green agent box
@@ -1177,6 +1265,8 @@ function resetEverything() {
   // Re-add to canvas
   canvas.add(bottomLeft, topRight, redBox, greenBox);
   canvas.renderAll();
+  
+  console.log(`Reset everything for canvas ${W}x${H}, agent at (${greenStartX}, ${greenStartY})`);
 }
 
 
@@ -1352,11 +1442,11 @@ async function runLiveValueIteration_step_by_step() {
 
   if (typeof liveDeltaMap === 'undefined') liveDeltaMap = new Map();
 
-  // Initialize values
+  // Initialize values - use smaller starting values for step-by-step mode
   for (const [x, y] of validStates) {
     const key = `${x},${y}`;
     if (key !== goalKey && !liveValues.has(key)) {
-      liveValues.set(key, -1000);
+      liveValues.set(key, 0); // Start with 0 instead of -1000 for cleaner display
     }
   }
 
@@ -1393,7 +1483,7 @@ async function runLiveValueIteration_step_by_step() {
   stepByStepControls.style.visibility = "visible";
   console.log("👁️ Step-by-step controls should now be visible");
   
-  stepByStepInfo.innerHTML = "🚀 Starting step-by-step analysis... Click 'Next Step' to begin!";
+  updateStepByStepContent("🚀 Starting step-by-step analysis... Click 'Next Step' to begin!");
   console.log("📝 Updated stepByStepInfo content");
 
   // Also check if Next Step button exists
@@ -1404,21 +1494,55 @@ async function runLiveValueIteration_step_by_step() {
   }
 
   try {
-    console.log("🔄 Starting iteration loop");
+    console.log("🔄 Starting infinite step-by-step loop");
     
-    for (let iter = 0; iter < totalIterations; iter++) {
+    // Infinite loop - user can keep stepping through states forever
+    while (true) {
       let delta = 0;
-      console.log(`📊 Iteration ${iter + 1}`);
+      console.log(`📊 Starting iteration ${liveIterationCount + 1}`);
 
       for (let stateIndex = 0; stateIndex < validStates.length; stateIndex++) {
+        // Check if user stopped the process
+        if (!window._isLiveRunning) {
+          console.log("🛑 Step-by-step stopped by user");
+          return;
+        }
+
         const [x, y] = validStates[stateIndex];
         const stateKey = `${x},${y}`;
         
         console.log(`🔍 Processing state ${stateIndex + 1}/${validStates.length}: (${x}, ${y})`);
         
         if (stateKey === goalKey) {
-          liveValues.set(stateKey, 0);
-          console.log("🎯 Skipping goal state");
+          liveValues.set(stateKey, 10); // Set goal value to 10 for step-by-step mode
+          
+          // Display the goal value
+          if (liveArrowMap.has(stateKey)) {
+            liveArrowMap.get(stateKey).set({ 
+              text: "10.0",
+              fontSize: 12,
+              fill: 'white',
+              stroke: 'black',
+              strokeWidth: 1
+            });
+          } else {
+            const goalValueDisplay = new fabric.Text("10.0", {
+              left: x,
+              top: y,
+              fontSize: 12,
+              originX: 'center',
+              originY: 'center',
+              fill: 'white',
+              stroke: 'black',
+              strokeWidth: 1,
+              selectable: false,
+              evented: false
+            });
+            liveArrowMap.set(stateKey, goalValueDisplay);
+            canvas.add(goalValueDisplay);
+          }
+          
+          console.log("🎯 Updated goal state value display");
           continue;
         }
 
@@ -1427,6 +1551,9 @@ async function runLiveValueIteration_step_by_step() {
         canvas.bringToFront(greenBox);
         canvas.requestRenderAll();
         
+        // Update agent position display in status bar
+        updateAgentPositionDisplay(x, y);
+        
         // Small delay to show movement
         if (delayMs > 0) {
           await new Promise(r => setTimeout(r, delayMs));
@@ -1434,11 +1561,11 @@ async function runLiveValueIteration_step_by_step() {
 
         const actionNames = ["up", "down", "left", "right"];
         const actionArrows = ["↑", "↓", "←", "→"];
-        const prevVal = liveValues.get(stateKey) || -1000;
+        const prevVal = liveValues.get(stateKey) || 0; // Use 0 as default for step-by-step
         
         // Build detailed analysis for each action
         let actionAnalysis = `<div style="background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">`;
-        actionAnalysis += `<h4 style="margin: 0 0 1rem 0; color: #1976d2;">State (${x}, ${y}) - Step ${stateIndex + 1}/${validStates.length}</h4>`;
+        actionAnalysis += `<h4 style="margin: 0 0 1rem 0; color: #1976d2;">Analyzing State Actions</h4>`;
         actionAnalysis += `<strong>Current value V(s) = ${prevVal.toFixed(4)}</strong><br><br>`;
         actionAnalysis += `<strong>Evaluating each action:</strong><br><br>`;
         
@@ -1459,12 +1586,12 @@ async function runLiveValueIteration_step_by_step() {
           } else {
             const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
             let reward = 0; // Reward is 0 for all non-terminal states
-            const nextStateValue = liveValues.get(neighborKey) || -1000;
+            const nextStateValue = liveValues.get(neighborKey) || 0; // Use 0 as default for step-by-step
             
             if (nextDist < boxSize) {
-              // Reaching goal
-              val = 10000;
-              actionAnalysis += `• <strong>${actionName} ${actionArrows[actionNum]}</strong>: r(s,a,s') = ${reward}, reaches GOAL → V = 10000<br>`;
+              // Reaching goal - use reward of 10 for step-by-step to keep numbers manageable
+              val = 10;
+              actionAnalysis += `• <strong>${actionName} ${actionArrows[actionNum]}</strong>: r(s,a,s') = 0, reaches GOAL → V = 10<br>`;
             } else {
               val = reward + gamma * nextStateValue;
               actionAnalysis += `• <strong>${actionName} ${actionArrows[actionNum]}</strong>: r(s,a,s') = ${reward}, V(s') = ${nextStateValue.toFixed(4)} → V = ${reward} + ${gamma} × ${nextStateValue.toFixed(4)} = ${val.toFixed(4)}<br>`;
@@ -1482,13 +1609,12 @@ async function runLiveValueIteration_step_by_step() {
         actionAnalysis += `<br><div style="background: #c8e6c9; padding: 0.5rem; border-radius: 4px; margin-top: 1rem;">`;
         actionAnalysis += `<strong>📈 Best action: ${actionNames[bestAction]} ${actionArrows[bestAction]}</strong><br>`;
         actionAnalysis += `<strong>📊 New V(s) = ${maxVal.toFixed(4)}</strong><br>`;
-        actionAnalysis += `<strong>📉 Change |V'(s) - V(s)| = ${deltaLocal.toFixed(6)}</strong>`;
+        actionAnalysis += `<strong>📉 Change |V'(s) - V(s)| = ${deltaLocal.toFixed(6)}</strong><br>`;
+        actionAnalysis += `<em>Value ${maxVal.toFixed(1)} will be displayed on the state</em>`;
         actionAnalysis += `</div></div>`;
         
         // Display detailed analysis
-        if (stepByStepInfo) {
-          stepByStepInfo.innerHTML = actionAnalysis;
-        }
+        updateStepByStepContent(actionAnalysis);
 
         // Wait for user to click "Next Step"
         console.log("⏸️ Waiting for user to click Next Step...");
@@ -1498,15 +1624,24 @@ async function runLiveValueIteration_step_by_step() {
         });
         console.log("▶️ User clicked Next Step, continuing...");
 
+        // Check again if user stopped while waiting
+        if (!window._isLiveRunning) {
+          console.log("🛑 Step-by-step stopped by user during wait");
+          return;
+        }
+
         // Update values and visualization
         liveDeltaMap.set(stateKey, deltaLocal);
         delta = Math.max(delta, deltaLocal);
         liveValues.set(stateKey, maxVal);
         livePolicyMap.set(stateKey, bestAction);
 
-        // Update heatmap visualization
-        liveMaxValueSeen = Math.max(liveMaxValueSeen, maxVal);
-        const color = deltaToColor(maxVal, liveMaxValueSeen || 1);
+        // Update delta display after each state
+        updateDeltaDisplay(delta);
+
+        // Update heatmap visualization (adjust for smaller values)
+        liveMaxValueSeen = Math.max(liveMaxValueSeen, Math.max(maxVal, 10)); // Include goal value in max
+        const color = deltaToColor(maxVal, liveMaxValueSeen || 10);
 
         if (yellowMap.has(stateKey)) {
           yellowMap.get(stateKey).set({ fill: color });
@@ -1525,55 +1660,81 @@ async function runLiveValueIteration_step_by_step() {
           canvas.add(heatRect);
         }
 
-        // Add arrow
-        const arrowChar = actionArrows[bestAction];
+        // Add value text instead of arrow for step-by-step mode
+        const valueText = maxVal.toFixed(1); // Show value with 1 decimal place
         if (liveArrowMap.has(stateKey)) {
-          liveArrowMap.get(stateKey).set({ text: arrowChar });
+          liveArrowMap.get(stateKey).set({ 
+            text: valueText,
+            fontSize: 12,
+            fill: 'white',
+            stroke: 'black',
+            strokeWidth: 1
+          });
         } else {
-          const arrow = new fabric.Text(arrowChar, {
+          const valueDisplay = new fabric.Text(valueText, {
             left: x,
             top: y,
-            fontSize: 16,
+            fontSize: 12,
             originX: 'center',
             originY: 'center',
-            fill: 'black',
+            fill: 'white',
+            stroke: 'black',
+            strokeWidth: 1,
             selectable: false,
             evented: false
           });
-          liveArrowMap.set(stateKey, arrow);
-          canvas.add(arrow);
+          liveArrowMap.set(stateKey, valueDisplay);
+          canvas.add(valueDisplay);
         }
 
         canvas.bringToFront(greenBox);
         canvas.requestRenderAll();
       }
 
+      // Completed one full iteration through all states
       liveIterationCount++;
       valuePolicy = Object.fromEntries(livePolicyMap);
       iterationDisplay.innerText = "Iterations: " + liveIterationCount;
-      if (document.getElementById("deltaDisplay")) {
-        document.getElementById("deltaDisplay").innerText = `Δ: ${delta.toFixed(6)}`;
-      }
+      // Update delta display
+      updateDeltaDisplay(delta);
       checkPolicyPathLength();
-    }
-
-    if (stepByStepInfo) {
-      stepByStepInfo.innerHTML = `<div style="background: #c8e6c9; padding: 1.5rem; border-radius: 8px; text-align: center;">
-        <h3 style="margin: 0 0 1rem 0; color: #2e7d32;">🎉 Step-by-step iteration complete!</h3>
-        <p style="margin: 0;">You can now use "Follow Optimal Policy" to see the agent navigate using the computed policy.</p>
-      </div>`;
+      
+      // Show iteration completion message and continue to next iteration
+      updateStepByStepContent(`<div style="background: #fff3e0; padding: 1rem; border-radius: 8px; text-align: center; border: 2px solid #ff9800;">
+        <h4 style="margin: 0 0 0.5rem 0; color: #f57c00;">📋 Iteration ${liveIterationCount} Complete!</h4>
+        <p style="margin: 0; color: #ef6c00;">All states processed. Δ = ${delta.toFixed(6)}<br>
+        <strong>Click "Next Step" to start iteration ${liveIterationCount + 1}</strong></p>
+      </div>`);
+      
+      // Wait for user to start next iteration
+      console.log("⏸️ Waiting for user to start next iteration...");
+      stepByStepPaused = true;
+      await new Promise(resolve => {
+        stepByStepResolver = resolve;
+      });
+      
+      // Check if user stopped during iteration break
+      if (!window._isLiveRunning) {
+        console.log("🛑 Step-by-step stopped by user");
+        return;
+      }
+      
+      console.log(`▶️ Starting iteration ${liveIterationCount + 1}...`);
     }
   } catch (error) {
     console.error("❌ Error in step-by-step iteration:", error);
   } finally {
     resetGreenBox();
     window._isLiveRunning = false;
-    // Hide step-by-step controls after completion
-    if (stepByStepControls) {
-      setTimeout(() => {
-        stepByStepControls.style.display = "none";
-      }, 5000); // Hide after 5 seconds
-    }
+    
+    // Show final message when stopped
+    updateStepByStepContent(`<div style="background: #ffebee; padding: 1rem; border-radius: 8px; text-align: center; border: 2px solid #f44336;">
+      <h4 style="margin: 0 0 0.5rem 0; color: #d32f2f;">🛑 Step-by-step stopped</h4>
+      <p style="margin: 0; color: #c62828;">You can restart step-by-step mode or use "Follow Optimal Policy" to see the agent navigate.</p>
+    </div>`);
+    
+    // Hide step-by-step controls when stopped
+    hideStepByStepControls();
   }
 }
 
@@ -1592,15 +1753,132 @@ function nextStepClick() {
 // Function to stop step-by-step iteration
 function stopStepByStep() {
   console.log("🛑 Stop step-by-step clicked");
+  
+  // Stop the running loop
+  window._isLiveRunning = false;
+  
+  // If currently waiting for user input, resolve it to exit cleanly
   if (stepByStepResolver) {
     stepByStepResolver();
     stepByStepResolver = null;
   }
   stepByStepPaused = false;
-  window._isLiveRunning = false;
-  const stepByStepControls = document.getElementById("stepByStepControls");
-  if (stepByStepControls) {
-    stepByStepControls.style.display = "none";
-  }
+  
+  // Hide step-by-step controls
+  hideStepByStepControls();
+  
   resetGreenBox();
+}
+
+// Introduction Mode Variables
+let hasRunValueIteration = false;
+
+// Switch to Introduction Mode Function
+function switchToIntroductionMode() {
+  // Remove all mode classes
+  document.body.className = '';
+  
+  // Update button states
+  document.getElementById('introduction-mode-btn').classList.add('active');
+  document.getElementById('tutorial-mode-btn').classList.remove('active');
+  document.getElementById('playground-mode-btn').classList.remove('active');
+  
+  // Update header subtitle
+  document.getElementById('header-subtitle').textContent = 'Interactive introduction to reinforcement learning algorithms';
+  
+  // Show introduction elements, hide others
+  // Show introduction elements, hide others
+document.querySelectorAll('.introduction-only').forEach(el => {
+  el.style.display = 'block';
+});
+document.querySelectorAll('.tutorial-only').forEach(el => {
+  el.style.display = 'none';  // Force hide with inline style
+});
+document.querySelectorAll('.playground-only').forEach(el => {
+  el.style.display = 'none';
+});
+  
+  // Explicitly hide all tutorial parts that might have been shown
+  document.querySelectorAll('.tutorial-part').forEach(part => {
+    part.style.display = 'none';
+  });
+  
+  // Hide all tutorial control parts
+  document.querySelectorAll('.tutorial-controls-part').forEach(controls => {
+    controls.style.display = 'none';
+  });
+  
+  // Hide all additional content for all parts
+  for (let i = 1; i <= 4; i++) {
+    const additionalContent = document.getElementById(`tutorial-part-${i}-additional`);
+    if (additionalContent) {
+      additionalContent.style.display = 'none';
+    }
+  }
+  
+  // EXPLICITLY hide the algorithm section that might have inline styles
+  const algorithmSection = document.querySelector('section[style*="background: #2c3e50"]');
+  if (algorithmSection) {
+    algorithmSection.style.display = 'none';
+  }
+  
+  // Remove all tutorial highlighting
+  removeAllTutorialHighlighting();
+  
+  // Reset introduction demo state
+  resetIntroductionDemo();
+  
+  console.log('Switched to Introduction Mode');
+}
+
+// Demo Functions for Introduction Mode
+function runValueIterationDemo() {
+  const statusDiv = document.getElementById('intro-status');
+  const statusText = document.getElementById('status-text');
+  const followBtn = document.getElementById('follow-path-btn');
+  
+  // Show status
+  statusDiv.style.display = 'block';
+  statusText.textContent = 'Running value iteration...';
+  
+  // Use your existing value iteration function
+  runValueIterationClientSide().then(() => {
+    statusText.textContent = 'Value iteration complete! Optimal policy computed.';
+    followBtn.style.display = 'inline-block';
+    hasRunValueIteration = true;
+  }).catch(() => {
+    // Fallback if your function doesn't return a promise
+    setTimeout(() => {
+      statusText.textContent = 'Value iteration complete! Optimal policy computed.';
+      followBtn.style.display = 'inline-block';
+      hasRunValueIteration = true;
+    }, 2000);
+  });
+}
+
+function followOptimalPath() {
+  if (!hasRunValueIteration) {
+    alert('Please run value iteration first!');
+    return;
+  }
+  
+  const statusText = document.getElementById('status-text');
+  statusText.textContent = 'Agent following optimal path to goal...';
+  
+  // Use your existing follow policy function
+  followValuePolicy();
+  
+  // Update status after a delay
+  setTimeout(() => {
+    statusText.textContent = 'Path complete! 🎉 Ready to learn how it works?';
+  }, 3000);
+}
+
+function resetIntroductionDemo() {
+  hasRunValueIteration = false;
+  const statusDiv = document.getElementById('intro-status');
+  const followBtn = document.getElementById('follow-path-btn');
+  
+  if (statusDiv) statusDiv.style.display = 'none';
+  if (followBtn) followBtn.style.display = 'none';
 }
