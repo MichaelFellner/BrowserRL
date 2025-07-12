@@ -74,14 +74,16 @@ main {
   padding: 0 1rem;
 }
 
-/* New Canvas + Actions Layout */
+/* Updated Main Layout - Ensure main layout doesn't shift when step-by-step status appears */
 .main-layout {
   display: flex;
   justify-content: center;
   align-items: flex-start;
   gap: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 2rem 1rem;
+  max-width: none;
+  margin: auto;
+  flex-wrap: wrap;
 }
 
 .canvas-and-controls {
@@ -89,39 +91,89 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  position: relative;
+  flex-shrink: 0;
 }
 
 .actions-panel {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding-top: 0;
+  position: relative;
+  flex-shrink: 0;
   width: 280px;
-  padding-top: 0; /* Align with canvas controls bar */
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
-  .main-layout {
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
-  }
-  
-  .actions-panel {
-    width: 100%;
-    max-width: 600px;
-  }
-}
-
-/* Sidebar Styling (now used for actions panel) */
-.actions-panel {
+.parameters-panel {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   width: 280px;
   padding-top: 0;
+  position: relative;
+  flex-shrink: 0;
 }
 
+/* Show playground panels side by side in main-layout */
+body.playground-mode .main-layout {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Ensure proper flex behavior for playground panels */
+body.playground-mode .actions-panel.playground-only {
+  flex: 0 0 280px;
+}
+
+body.playground-mode .parameters-panel.playground-only {
+  flex: 0 0 280px;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .main-layout {
+    flex-direction: column !important;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .actions-panel,
+  .parameters-panel,
+  .canvas-and-controls {
+    width: 100%;
+    max-width: 600px;
+    order: unset !important; /* Reset order on mobile */
+  }
+  
+  /* Responsive for playground mode */
+  body.playground-mode .actions-panel.playground-only,
+  body.playground-mode .parameters-panel.playground-only {
+    width: 100%;
+    max-width: 600px;
+    flex: none;
+  }
+}
+
+/* Introduction mode: actions on the RIGHT of canvas */
+/* Introduction and Tutorial modes: actions on the RIGHT of canvas */
+body:not(.playground-mode) .main-layout {
+  flex-direction: row;
+}
+
+body:not(.playground-mode) .canvas-and-controls {
+  order: 1; /* Canvas first (left) */
+}
+
+body:not(.playground-mode) .actions-panel {
+  order: 2; /* Actions second (right) */
+}
+
+/* Sidebar Styling (now used for actions panel) */
 .sidebar-section {
   background: rgba(255, 255, 255, 0.95);
   padding: 0.75rem;
@@ -228,17 +280,80 @@ main {
   transition: width 0.3s ease;
 }
 
+/* Canvas status bar wrapper to hold external buttons */
+.canvas-status-bar-wrapper {
+  display: flex;
+  align-items: stretch; /* Keep stretch so buttons match status bar height */
+  gap: 12px;
+  width: 600px; /* Will be updated dynamically to match canvas */
+  transition: width 0.3s ease;
+}
+
+/* Enhanced canvas status bar (now just the center part) */
 .canvas-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 600px; /* Will be updated dynamically to match canvas */
-  padding: 0.5rem;
+  flex: 1; /* Take up remaining space in wrapper */
+  padding: 0.5rem; /* Back to original padding */
   background: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   backdrop-filter: blur(10px);
-  transition: width 0.3s ease;
+  position: relative;
+}
+
+/* Step-by-Step Status Bar positioning */
+#stepByStepStatusBar {
+  margin-top: 0.5rem;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid #2196F3;
+}
+
+/* Step-by-Step Button Containers (now external) */
+#stepByStepStopContainer,
+#stepByStepNextContainer {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: auto; /* Let it calculate naturally */
+  min-height: 44px; /* Ensure minimum height matches status bar */
+}
+
+/* Ensure external buttons have proper styling and match status bar height */
+#stepByStepStopContainer .btn-mini,
+#stepByStepNextContainer .btn-mini {
+  white-space: nowrap;
+  min-width: 70px;
+  font-size: 11px;
+  padding: 12px 10px; /* Restore vertical padding to make buttons proper height */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px; /* Match status bar border radius */
+  min-height: 44px; /* Explicit height to match status bar */
+}
+
+/* Make the Next Step button purple like the step-by-step button */
+#stepByStepNextContainer .btn-mini.btn-primary {
+  background: linear-gradient(45deg, #9C27B0, #7B1FA2) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.3) !important;
+}
+
+#stepByStepNextContainer .btn-mini.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4) !important;
 }
 
 .status-info {
@@ -431,7 +546,52 @@ main {
   min-width: 60px;
 }
 
-/* Form Controls */
+/* Input groups for better form organization */
+.input-group {
+  margin-bottom: 0.75rem;
+}
+
+.input-group label {
+  margin-bottom: 0.25rem;
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Playground Section Styles */
+.playground-section {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.playground-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 0.5rem;
+}
+
+.playground-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playground-params {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 label {
   display: block;
   margin-bottom: 0.8rem;
@@ -555,19 +715,28 @@ input:focus {
 
 /* Tutorial Styles */
 .tutorial-step {
-  background: #e3f2fd;
-  border: 2px solid #2196f3;
-  padding: 1.5rem;
-  border-radius: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 1.25rem;
+  border-radius: 8px;
   margin-bottom: 1rem;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.6;
 }
 
 .tutorial-step h3 {
-  color: #1976d2;
-  margin: 0 0 1rem 0;
-  font-size: 1.4rem;
+  color: #2c3e50;
+  margin: 0 0 0.75rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.tutorial-step p {
+  margin-bottom: 1rem;
+}
+
+.tutorial-step:last-child {
+  margin-bottom: 0;
 }
 
 .tutorial-only {
@@ -612,6 +781,93 @@ input:focus {
   justify-content: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+/* Tutorial Layout */
+.tutorial-container-wrapper {
+  max-width: 1400px;
+  margin: 2rem auto 0 auto;
+}
+
+.tutorial-global-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.tutorial-global-header h2 {
+  color: #2c3e50;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.tutorial-container {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  min-height: 600px;
+}
+
+.tutorial-content-panel {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  max-width: calc(100% - 600px); /* Updated for 550px algorithm panel + gap */
+}
+
+.tutorial-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tutorial-header h2 {
+  color: #2c3e50;
+  margin: 0 0 1rem 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.algorithm-panel {
+  flex: 0 0 550px; /* Increased to 550px (50px wider) */
+  background: #2c3e50;
+  color: #ecf0f1;
+  padding: 1.5rem;
+  border-radius: 12px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  height: fit-content;
+  position: sticky;
+  top: 2rem;
+  min-height: 400px;
+}
+
+.algorithm-panel h3 {
+  color: #3498db;
+  text-align: center;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.algorithm-content {
+  background: #34495e;
+  padding: 1.5rem;
+  border-radius: 8px;
+  line-height: 1.8;
+  font-size: 13px;
 }
 
 /* Enhanced Tutorial Highlighting System */
@@ -711,18 +967,28 @@ body.playground-mode .math-simple-only {
 
 /* Mode visibility classes */
 .introduction-only { display: block; }
+.tutorial-only { display: none; }
+.playground-only { display: none; }
 
+/* Introduction mode - show both introduction-only and tutorial-only elements */
+body:not(.tutorial-mode):not(.playground-mode) .introduction-only { display: block; }
+body:not(.tutorial-mode):not(.playground-mode) .tutorial-only { display: block; }
+
+/* Tutorial mode */
 body.tutorial-mode .introduction-only { display: none; }
-body.playground-mode .introduction-only { display: none; }
+body.tutorial-mode .tutorial-only { display: block; }
+body.tutorial-mode .playground-only { display: none; }
 
-body:not(.tutorial-mode):not(.playground-mode) .tutorial-only { 
-  display: none !important; 
-}
+/* Playground mode */
+body.playground-mode .introduction-only { display: none; }
+body.playground-mode .tutorial-only { display: none; }
+body.playground-mode .playground-only { display: block; }
 
 /* Tutorial part-specific visibility */
 .tutorial-part-1-only { display: none; }
 .tutorial-part-2-plus { display: none; }
 .tutorial-part-3-plus { display: none; }
+.tutorial-part-2-only { display: none; }
 
 body.tutorial-part-1 .tutorial-part-1-only { display: block; }
 body.tutorial-part-2 .tutorial-part-2-plus,
@@ -730,6 +996,110 @@ body.tutorial-part-3 .tutorial-part-2-plus,
 body.tutorial-part-4 .tutorial-part-2-plus { display: block; }
 body.tutorial-part-3 .tutorial-part-3-plus,
 body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
+body.tutorial-part-2 .tutorial-part-2-only { display: block; }
+
+/* Explicitly hide tutorial settings in parts 1, 3, and 4 */
+body.tutorial-part-1 .tutorial-part-2-only,
+body.tutorial-part-3 .tutorial-part-2-only,
+body.tutorial-part-4 .tutorial-part-2-only {
+  display: none !important;
+}
+
+/* Hide canvas and controls for tutorial part 4 */
+body.tutorial-part-4 .main-layout {
+  display: none !important;
+}
+
+/* Manual controls visibility - only part 1 */
+body.tutorial-part-2 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-3 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-4 .collapsible-section.tutorial-only.playground-only {
+  display: none !important;
+}
+
+/* Force manual controls to be visible in tutorial part 1 only */
+body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only {
+  display: block !important;
+  visibility: visible !important;
+}
+
+body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only .collapsible-content {
+  display: block !important;
+}
+
+body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only .collapsible-toggle {
+  transform: rotate(180deg);
+}
+
+/* Manual controls hidden in parts 2, 3, and 4 */
+body.tutorial-part-2 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-3 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-4 .collapsible-section.tutorial-only.playground-only {
+  display: none !important;
+}
+
+/* Responsive Tutorial Layout */
+@media (max-width: 1200px) {
+  .tutorial-container-wrapper {
+    max-width: 100% !important;
+    margin: 1rem !important;
+  }
+  
+  .tutorial-global-header {
+    margin-bottom: 1rem !important;
+    padding: 1.5rem !important;
+  }
+  
+  .tutorial-global-header h2 {
+    font-size: 1.4rem !important;
+  }
+  
+  .tutorial-container {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+    max-width: 100% !important;
+  }
+  
+  .tutorial-content-panel {
+    max-width: 100% !important;
+  }
+  
+  .algorithm-panel {
+    flex: none !important;
+    position: relative !important;
+    top: auto !important;
+    order: -1; /* Show algorithm first on mobile */
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Force horizontal layout on larger screens */
+@media (min-width: 1201px) {
+  .tutorial-container {
+    display: flex !important;
+    flex-direction: row !important;
+  }
+  
+  .tutorial-content-panel {
+    flex: 1 !important;
+    max-width: calc(100% - 600px) !important; /* Updated for 550px algorithm panel + gap */
+  }
+  
+  .algorithm-panel {
+    flex: 0 0 550px !important; /* Updated to 550px */
+    position: sticky !important;
+    top: 2rem !important;
+  }
+}
+/* Actions panel for both introduction and tutorial modes */
+.non-playground-actions {
+  display: flex;
+}
+
+body.playground-mode .non-playground-actions {
+  display: none;
+}
   </style>
 </head>
 <body>
@@ -763,145 +1133,302 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
     </section>
   </main>
 
-  <!-- Tutorial Mode Content -->
-  <section id="tutorial-explanation" class="tutorial-only" style="max-width: 900px; margin: 2rem auto 0 auto;">
-    <!-- Tutorial Part 1 -->
-    <div id="tutorial-part-1" class="tutorial-part">
-      <div style="text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #00ff1a; margin: 0;">Tutorial Part 1: State, Actions, and the Value Function</h2>
-        <div class="tutorial-navigation" style="margin-top: 1rem;">
-          <button onclick="switchTutorialPart(1)" id="part-1-btn" class="tutorial-nav-btn active">Part 1</button>
-          <button onclick="switchTutorialPart(2)" id="part-2-btn" class="tutorial-nav-btn">Part 2</button>
-          <button onclick="switchTutorialPart(3)" id="part-3-btn" class="tutorial-nav-btn">Part 3</button>
-          <button onclick="switchTutorialPart(4)" id="part-4-btn" class="tutorial-nav-btn">Part 4</button>
+  <!-- Tutorial Mode Content - Side by Side Layout -->
+  <div class="tutorial-only tutorial-container-wrapper">
+    
+    <!-- Tutorial Header (Above Both Panels) -->
+    <div class="tutorial-global-header">
+      <h2 id="tutorial-main-title">Tutorial Part 1: State, Actions, and the Value Function</h2>
+      <div class="tutorial-navigation">
+        <button onclick="switchTutorialPart(1)" id="part-1-btn-global" class="tutorial-nav-btn active">Part 1</button>
+        <button onclick="switchTutorialPart(2)" id="part-2-btn-global" class="tutorial-nav-btn">Part 2</button>
+        <button onclick="switchTutorialPart(3)" id="part-3-btn-global" class="tutorial-nav-btn">Part 3</button>
+        <button onclick="switchTutorialPart(4)" id="part-4-btn-global" class="tutorial-nav-btn">Part 4</button>
+      </div>
+    </div>
+
+    <!-- Tutorial Content and Algorithm Side by Side -->
+    <div class="tutorial-container">
+      
+      <!-- Tutorial Content (Left Side) -->
+      <section id="tutorial-explanation" class="tutorial-content-panel">
+        <!-- Tutorial Part 1 -->
+        <div id="tutorial-part-1" class="tutorial-part">
+          <div class="tutorial-step">
+            <h3>Introduction</h3>
+            <p>Welcome to the Value Iteration Tutorial! Our goal is to understand this algorithm. In this part, we will learn 5 key terms:</p>
+            <ul>
+              <li><b>Agent</b>: This is the thing that learns by interacting with the environment. In the maze below, the green square is our agent.</li>
+              <li><b>State</b>: States compose an environment. In the maze below, every single place the agent can be is a different state.</li>
+              <li><b>Action</b>: An action is something the agent can do to interact with the environment.</li>
+              <li><b>Value Function</b>: The value function takes in a state and outputs its value. States closer to the goal tend to have higher value.</li>
+              <li><b>Policy</b>: A policy tells the agent what actions to take in each state. With the correct value function, we can derive the optimal policy!</li>
+            </ul>
+            <p>Value Iteration is an algorithm used to find the correct value function and thus allow the agent to use the optimal policy!</p>
+          </div>
+          
+          <div class="tutorial-step">
+            <h3>Try It Out!</h3>
+            <p>Before diving deeper into the algorithm, let's get familiar with the environment:</p>
+            <ul>
+              <li><b>Draw a path</b>: Use your mouse to draw white paths in the canvas below. Connect the green agent area to the purple goal area.</li>
+              <li><b>Observe the agent</b>: Notice the green square (agent) in the bottom-left and the purple goal area in the top-right.</li>
+              <li><b>Use manual controls</b>: Try the arrow buttons to manually move the agent around and see how its position changes.</li>
+              <li><b>Agent position</b>: Watch how the agent's coordinates update as you move it - each position represents a different state!</li>
+            </ul>
+            <p><em>This hands-on exploration will help you understand the concepts we just learned. Once you've experimented a bit, move on to Part 2 to see the value iteration algorithm in action!</em></p>
+          </div>
         </div>
-      </div>
-      
-      <div class="tutorial-step">
-        <h3>Introduction</h3>
-        <p>Welcome to the Value Iteration Tutorial! Our goal is to understand this algorithm. In this part, we will learn 5 key terms:</p>
-        <ul>
-          <li><b>Agent</b>: This is the thing that learns by interacting with the environment. In the maze below, the green square is our agent.</li>
-          <li><b>State</b>: States compose an environment. In the maze below, every single place the agent can be is a different state.</li>
-          <li><b>Action</b>: An action is something the agent can do to interact with the environment.</li>
-          <li><b>Value Function</b>: The value function takes in a state and outputs its value. States closer to the goal tend to have higher value.</li>
-          <li><b>Policy</b>: A policy tells the agent what actions to take in each state. With the correct value function, we can derive the optimal policy!</li>
-        </ul>
-        <p>Value Iteration is an algorithm used to find the correct value function and thus allow the agent to use the optimal policy!</p>
-      </div>
-    </div>
 
-    <!-- Tutorial Part 2 -->
-    <div id="tutorial-part-2" class="tutorial-part" style="display: none;">
-      <div style="text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #0dff00; margin: 0;">Tutorial Part 2: Putting the <i>Iteration</i> in Value Iteration</h2>
-        <div class="tutorial-navigation" style="margin-top: 1rem;">
-          <button onclick="switchTutorialPart(1)" id="part-1-btn-2" class="tutorial-nav-btn">Part 1</button>
-          <button onclick="switchTutorialPart(2)" id="part-2-btn-2" class="tutorial-nav-btn active">Part 2</button>
-          <button onclick="switchTutorialPart(3)" id="part-3-btn-2" class="tutorial-nav-btn">Part 3</button>
-          <button onclick="switchTutorialPart(4)" id="part-4-btn-2" class="tutorial-nav-btn">Part 4</button>
+        <!-- Tutorial Part 2 -->
+        <div id="tutorial-part-2" class="tutorial-part" style="display: none;">
+          <div class="tutorial-step">
+            <h3><span data-highlight-part="2">Chaos to Order</span></h3>
+            <p>Value iteration starts by assigning either random values, or some constant value (like 0) to every state. At this point the value function is inaccurate. (See the <b>first</b> orange highlighted line). But ultimately, we will get an accurate value for each state. We'll do this by <i>iterating</i> through every single state in the state-space (See the <b>second</b> orange highlighted line). Then, for each state, we update its value to something that, on average, is more accurate. (See part 3 for how its updated). V(s) is the current value of a state, V'(s) denotes the next value of a state. The <b>third</b> orange line is saying that V'(s) is a result of what is happening on the right side of the arrow. The <b>fourth</b> orange line then says to update the value function to use the new values.</p>
+          </div>
+          
+          <div class="tutorial-step">
+            <h3><span data-highlight-part="2-alt">When do we Stop?</span></h3>
+            <p>The intuition for when we stop looping through all of the states and improving the value function is that we stop once any new improvements become very very small. That is where this symbol, Δ, comes into play. Δ is the difference between the new value function and the old value function. If Δ is small, then we stop, and value iteration is complete!</p>
+            <p>We start by setting Δ to zero (line X). It will not stay zero for long. We then start looping through all of the states and update their values by getting V'(s). At this point we can check what the absolute difference is between the new value, V'(s) is, and the old value, V(s) is. It's likely that this difference will be greater than 0. So when we get to line X, we update Δ to be whatever is higher, the current Δ or |V'(s) - V(s)|. So let's say that |V'(s) - V(s)| = 10, then Δ will now be 10, since the current Δ started at 0. Then on the next state, maybe |V'(s) - V(s)| = 20. When we then check what's higher, the current Δ or |V'(s) - V(s)|, 20 will be more than 10, therefore Δ will now equal 20. In this way, Δ ends up equalling the largest difference found for a state after looping through all of them.</p>
+            <p>After looping through each state, we check if Δ, the largest difference between any state's original value V(s) and its updated value, V(s') is less than or equal some small number denoted as θ. If it is, then we are done! Behind the scenes, this website uses 0.0001 as θ, meaning that once the difference between the new value function and the old value function is less than or equal to 0.0001, we assume that the value function is accurate. In playground mode, you can experiment using different values of θ.</p>
+          </div>
         </div>
-      </div>
-      
-      <div class="tutorial-step">
-        <h3><span data-highlight-part="2">Chaos to Order</span></h3>
-        <p>Value iteration starts by assigning either random values, or some constant value (like 0) to every state. At this point the value function is inaccurate. (See the <b>first</b> orange highlighted line). But ultimately, we will get an accurate value for each state. We'll do this by <i>iterating</i> through every single state in the state-space (See the <b>second</b> orange highlighted line). Then, for each state, we update its value to something that, on average, is more accurate. (See part 3 for how its updated). V(s) is the current value of a state, V'(s) denotes the next value of a state. The <b>third</b> orange line is saying that V'(s) is a result of what is happening on the right side of the arrow. The <b>fourth</b> orange line then says to update the value function to use the new values.</p>
-      </div>
-      
-      <div class="tutorial-step">
-        <h3><span data-highlight-part="2-alt">When do we Stop?</span></h3>
-        <p>The intuition for when we stop looping through all of the states and improving the value function is that we stop once any new improvements become very very small. That is where this symbol, Δ, comes into play. Δ is the difference between the new value function and the old value function. If Δ is small, then we stop, and value iteration is complete!</p>
-        <p>We start by setting Δ to zero (line X). It will not stay zero for long. We then start looping through all of the states and update their values by getting V'(s). At this point we can check what the absolute difference is between the new value, V'(s) is, and the old value, V(s) is. It's likely that this difference will be greater than 0. So when we get to line X, we update Δ to be whatever is higher, the current Δ or |V'(s) - V(s)|. So let's say that |V'(s) - V(s)| = 10, then Δ will now be 10, since the current Δ started at 0. Then on the next state, maybe |V'(s) - V(s)| = 20. When we then check what's higher, the current Δ or |V'(s) - V(s)|, 20 will be more than 10, therefore Δ will now equal 20. In this way, Δ ends up equalling the largest difference found for a state after looping through all of them.</p>
-        <p>After looping through each state, we check if Δ, the largest difference between any state's original value V(s) and its updated value, V(s') is less than or equal some small number denoted as θ. If it is, then we are done! Behind the scenes, this website uses 0.0001 as θ, meaning that once the difference between the new value function and the old value function is less than or equal to 0.0001, we assume that the value function is accurate. In playground mode, you can experiment using different values of θ.</p>
-      </div>
-    </div>
 
-    <!-- Tutorial Part 3 -->
-    <div id="tutorial-part-3" class="tutorial-part" style="display: none;">
-      <div style="text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #00ff11; margin: 0;">Tutorial Part 3: Step-by-Step Analysis</h2>
-        <div class="tutorial-navigation" style="margin-top: 1rem;">
-          <button onclick="switchTutorialPart(1)" id="part-1-btn-3" class="tutorial-nav-btn">Part 1</button>
-          <button onclick="switchTutorialPart(2)" id="part-2-btn-3" class="tutorial-nav-btn">Part 2</button>
-          <button onclick="switchTutorialPart(3)" id="part-3-btn-3" class="tutorial-nav-btn active">Part 3</button>
-          <button onclick="switchTutorialPart(4)" id="part-4-btn-3" class="tutorial-nav-btn">Part 4</button>
+        <!-- Tutorial Part 3 -->
+        <div id="tutorial-part-3" class="tutorial-part" style="display: none;">
+          <div class="tutorial-step">
+            <h3>Introducing the Reward Function</h3>
+            <p>It's time to look at that last part of the algorithm. The crucial part when we update the current value of a state, V(s), and hopefully make it into something more accurate, V'(s). First we have to introduce one more key term:</p>
+            <ul>
+              <li><b>Reward Function</b>: The reward function, r(s), takes in a state and outputs a reward. Crucially, <i>reward is different than value</i>. A reward function just tells you how immediately rewarding a current state is, but it does not take into account other states. So say you are at an amusement park and roller coaster A is very fun but has a super long line, while roller coaster B is kinda fun but has no line. Coaster A will have a higher reward than B, but the beginning of the line will have a higher <i>value</i> for coaster B than coaster A.</li>
+            </ul>
+          </div>
+          
+          <div class="tutorial-step">
+            <h3><span data-highlight-part="3">How the Value Function Improves</span></h3>
+            <p>We can now understand the purple highlighted part. The way it works is that it finds the action that maximizes r(s') + γV(s'). s' means next state. Each action brings you to a different s' (most of the time, sometimes multiple actions can lead to the same next state). r(s') is the reward of the next state, and γV(s') is the value of the next state, multiplied by a constant γ.</p>
+            <p>γ is the <b>discount rate</b>, and this determines how much the value of the next state should affect the current state. If it's 0, then that means we don't care about the value of the next state at all, therefore we only care about the reward. If it's 1 then that means we really care about the value of the next state. γ often equals 0.9, but in the background of this website, γ is actually set to 1, so it doesn't really matter that much. You can experiment more with γ in playground mode.</p>
+            <p>To bring it all together, all the highlighted line is doing now is checking which action leads to the greatest r(s') + γV(s'), and then updates V(s) to be that maximum r(s') + γV(s').</p>
+          </div> 
         </div>
-      </div>
-      
-      <div class="tutorial-step">
-        <h3>Introducing the Reward Function</h3>
-        <p>It's time to look at that last part of the algorithm. The crucial part when we update the current value of a state, V(s), and hopefully make it into something more accurate, V'(s). First we have to introduce one more key term:</p>
-        <ul>
-          <li><b>Reward Function</b>: The reward function, r(s), takes in a state and outputs a reward. Crucially, <i>reward is different than value</i>. A reward function just tells you how immediately rewarding a current state is, but it does not take into account other states. So say you are at an amusement park and roller coaster A is very fun but has a super long line, while roller coaster B is kinda fun but has no line. Coaster A will have a higher reward than B, but the beginning of the line will have a higher <i>value</i> for coaster B than coaster A.</li>
-        </ul>
-      </div>
-      
-      <div class="tutorial-step">
-        <h3><span data-highlight-part="3">How the Value Function Improves</span></h3>
-        <p>We can now understand the purple highlighted part. The way it works is that it finds the action that maximizes r(s') + γV(s'). s' means next state. Each action brings you to a different s' (most of the time, sometimes multiple actions can lead to the same next state). r(s') is the reward of the next state, and γV(s') is the value of the next state, multiplied by a constant γ.</p>
-        <p>γ is the <b>discount rate</b>, and this determines how much the value of the next state should affect the current state. If it's 0, then that means we don't care about the value of the next state at all, therefore we only care about the reward. If it's 1 then that means we really care about the value of the next state. γ often equals 0.9, but in the background of this website, γ is actually set to 1, so it doesn't really matter that much. You can experiment more with γ in playground mode.</p>
-        <p>To bring it all together, all the highlighted line is doing now is checking which action leads to the greatest r(s') + γV(s'), and then updates V(s) to be that maximum r(s') + γV(s').</p>
-      </div> 
-    </div>
 
-    <!-- Tutorial Part 4 -->
-    <div id="tutorial-part-4" class="tutorial-part" style="display: none;">
-      <div style="text-align: center; margin-bottom: 2rem;">
-        <h2 style="color: #00ff11; margin: 0;">Tutorial Part 4: Final Caveats</h2>
-        <div class="tutorial-navigation" style="margin-top: 1rem;">
-          <button onclick="switchTutorialPart(1)" id="part-1-btn-4" class="tutorial-nav-btn">Part 1</button>
-          <button onclick="switchTutorialPart(2)" id="part-2-btn-4" class="tutorial-nav-btn">Part 2</button>
-          <button onclick="switchTutorialPart(3)" id="part-3-btn-4" class="tutorial-nav-btn">Part 3</button>
-          <button onclick="switchTutorialPart(4)" id="part-4-btn-4" class="tutorial-nav-btn active">Part 4</button>
+        <!-- Tutorial Part 4 -->
+        <div id="tutorial-part-4" class="tutorial-part" style="display: none;">
+          <div class="tutorial-step">
+            <h3>Congratulations!</h3>
+            <p>You've completed the Value Iteration tutorial! You now understand the core concepts of:</p>
+            <ul>
+              <li><strong>States and Actions</strong> - The building blocks of any reinforcement learning environment</li>
+              <li><strong>Value Functions</strong> - How we estimate the worth of being in different states</li>
+              <li><strong>The Iterative Process</strong> - How value iteration gradually improves our estimates</li>
+              <li><strong>Policy Extraction</strong> - How optimal actions emerge from accurate value functions</li>
+            </ul>
+          </div>
+          
+          <div class="tutorial-step">
+            <h3><span data-highlight-part="4">Except for One Tiny Part(s)</span></h3>
+            <p>This whole time we've actually been looking at a slightly simplified version of value iteration. The blue parts are parts that were removed in steps 1-3.</p>
+            <ul>
+              <li><b>P(s'|s,a):</b> This part is relevant if actions operated probabilistically. Because this whole time we've been in a deterministic environment, it was irrelevant. But what this part means is "the probability of going to state s' given you're in state s and taking action a.</li>
+              <li><b>r(s,a,s'):</b> Technically, the reward function is best described not just as r(s'), but as a function of the current state you're in 's', the action you're taking 'a', and also the state you end up in, s' (hence r(s,a,s')). For this environment, r(s') was good enough, but imagine in a different environment, there's some state s', but to get to it from the north you must go through lava while walking on your hands, but to get to it from the south, you simply walk through an air conditioned hallway. In this case, you don't want the reward to just factor in the destination, but the journey as well.</li>
+              <li><b>∑<sub>s'</sub>:</b> This last little part... is actually a huge deal! In a deterministic environment, it is not necessary. A "deterministic environment", meaning that each action leads to only one next state 100% of the time. This website is a deterministic environment. But in a probabilistic environment, where actions can potentially lead to multiple different states, this summation term is crucial. What this term means is that for each action, we can't just take into account r(s') + γV(s') for a single next state, but instead we have to take into account r(s') + γV(s') for every potential next state! We sum the r(s') + γV(s') for <i>every</i> possible next state, and weigh each [r(s') + γV(s')] by the probability of ending up in that s'. This adds another loop to the value iteration algorithm and causes things to move much slower. It is actually the nature of a probabilistic environment that is a big reason for why <i>reinforcement learning</i> is used in many cases instead of value iteration.</li>
+            </ul>
+          </div>
+          
+          <div class="tutorial-step" style="text-align: center; background: #e8f5e9; border: 2px solid #4CAF50;">
+            <h3 style="color: #2e7d32; margin-bottom: 1rem;">🚀 Ready to Explore?</h3>
+            <p style="margin-bottom: 1.5rem; color: #555;">Now that you understand the theory, experiment with different parameters and environments!</p>
+            <button onclick="switchToPlaygroundMode()" class="btn-primary" style="padding: 12px 24px; font-size: 16px; font-weight: 600;">Go to Playground Mode</button>
+          </div>
         </div>
-      </div>
-      
-      <div class="tutorial-step">
-        <h3>Congratulations!</h3>
-        <p>You've completed the Value Iteration tutorial! You now understand the core concepts of:</p>
-        <ul>
-          <li><strong>States and Actions</strong> - The building blocks of any reinforcement learning environment</li>
-          <li><strong>Value Functions</strong> - How we estimate the worth of being in different states</li>
-          <li><strong>The Iterative Process</strong> - How value iteration gradually improves our estimates</li>
-          <li><strong>Policy Extraction</strong> - How optimal actions emerge from accurate value functions</li>
-        </ul>
-      </div>
-      
-      <div class="tutorial-step">
-        <h3><span data-highlight-part="4">Except for One Tiny Part(s)</span></h3>
-        <p>This whole time we've actually been looking at a slightly simplified version of value iteration. The blue parts are parts that were removed in steps 1-3.</p>
-        <ul>
-          <li><b>P(s'|s,a):</b> This part is relevant if actions operated probabilistically. Because this whole time we've been in a deterministic environment, it was irrelevant. But what this part means is "the probability of going to state s' given you're in state s and taking action a.</li>
-          <li><b>r(s,a,s'):</b> Technically, the reward function is best described not just as r(s'), but as a function of the current state you're in 's', the action you're taking 'a', and also the state you end up in, s' (hence r(s,a,s')). For this environment, r(s') was good enough, but imagine in a different environment, there's some state s', but to get to it from the north you must go through lava while walking on your hands, but to get to it from the south, you simply walk through an air conditioned hallway. In this case, you don't want the reward to just factor in the destination, but the journey as well.</li>
-          <li><b>∑<sub>s'</sub>:</b> This last little part... is actually a huge deal! In a deterministic environment, it is not necessary. A "deterministic environment", meaning that each action leads to only one next state 100% of the time. This website is a deterministic environment. But in a probabilistic environment, where actions can potentially lead to multiple different states, this summation term is crucial. What this term means is that for each action, we can't just take into account r(s') + γV(s') for a single next state, but instead we have to take into account r(s') + γV(s') for every potential next state! We sum the r(s') + γV(s') for <i>every</i> possible next state, and weigh each [r(s') + γV(s')] by the probability of ending up in that s'. This adds another loop to the value iteration algorithm and causes things to move much slower. It is actually the nature of a probabilistic environment that is a big reason for why <i>reinforcement learning</i> is used in many cases instead of value iteration.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <!-- Algorithm Display -->
-  <section class="tutorial-only" style="max-width: 900px; margin: 2rem auto; background: #2c3e50; color: #ecf0f1; padding: 2rem; border-radius: 12px; font-family: 'Courier New', monospace; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-    <h3 style="color: #3498db; text-align: center; margin: 0 0 1.5rem 0; font-size: 1.4rem;">Value Iteration Algorithm</h3>
-    <div style="background: #34495e; padding: 1.5rem; border-radius: 8px; line-height: 1.8; font-size: 16px;">
-      <div style="margin-bottom: 1rem;"><span data-highlight-part="2"><em>V</em> to arbitrary value function; e.g., <em>V(s)</em> = 0 for all <em>s</em></span></div>
-      <div style="margin-bottom: 1rem;"><strong>repeat</strong></div>
-      <div style="margin-left: 2rem; margin-bottom: 1rem;"><span data-highlight-part="2-alt">Δ ← 0</span></div>
-      <div style="margin-left: 2rem; margin-bottom: 1rem;"><span data-highlight-part="2"><strong>for each</strong> <em>s</em> ∈ <em>S</em></span></div>
-      <div style="margin-left: 4rem; margin-bottom: 1rem;">
-        <span data-highlight-part="2"><em>V'(s)</em> ←</span> 
-        <span data-highlight-part="3">max<sub>a∈A(s)</sub></span>
-        <span class="math-complete-only" data-highlight-part="4">∑<sub>s'</sub> P(s'|s,a)</span>
-        <span data-highlight-part="3">[<span class="math-simple-only"><em>r(s')</em></span><span class="math-complete-only"><em>r(s,a,s')</em></span> + γ <em>V(s')</em>]</span>
-      </div>
-      <div style="margin-left: 4rem; margin-bottom: 1rem;"><span data-highlight-part="2-alt">Δ ← max(Δ, |<em>V'(s)</em> - <em>V(s)</em>|)</span></div>
-      <div style="margin-left: 2rem; margin-bottom: 1rem;"><span data-highlight-part="2"><em>V</em> ← <em>V'</em></span></div>
-      <div style="margin-bottom: 0;"><span data-highlight-part="2-alt"><strong>until</strong> Δ ≤ θ</span></div>
-    </div>
-  </section>
+      <!-- Algorithm Display (Right Side) -->
+      <section class="algorithm-panel">
+        <h3>Value Iteration Algorithm</h3>
+        <div class="algorithm-content">
+          <div style="margin-bottom: 1rem;"><strong>1.</strong> <span data-highlight-part="2"><em>V</em> to arbitrary value function; e.g., <em>V(s)</em> = 0 for all <em>s</em></span></div>
+          <div style="margin-bottom: 1rem;"><strong>2.</strong> <strong>repeat</strong></div>
+          <div style="margin-left: 2rem; margin-bottom: 1rem;"><strong>3.</strong> <span data-highlight-part="2-alt">Δ ← 0</span></div>
+          <div style="margin-left: 2rem; margin-bottom: 1rem;"><strong>4.</strong> <span data-highlight-part="2"><strong>for each</strong> <em>s</em> ∈ <em>S</em></span></div>
+          <div style="margin-left: 4rem; margin-bottom: 1rem;">
+            <strong>5.</strong> <span data-highlight-part="2"><em>V'(s)</em> ←</span> 
+            <span data-highlight-part="3">max<sub>a∈A(s)</sub></span>
+            <span class="math-complete-only" data-highlight-part="4">∑<sub>s'</sub> P(s'|s,a)</span>
+            <span data-highlight-part="3">[<span class="math-simple-only"><em>r(s')</em></span><span class="math-complete-only"><em>r(s,a,s')</em></span> + γ <em>V(s')</em>]</span>
+          </div>
+          <div style="margin-left: 4rem; margin-bottom: 1rem;"><strong>6.</strong> <span data-highlight-part="2-alt">Δ ← max(Δ, |<em>V'(s)</em> - <em>V(s)</em>|)</span></div>
+          <div style="margin-left: 2rem; margin-bottom: 1rem;"><strong>7.</strong> <span data-highlight-part="2"><em>V</em> ← <em>V'</em></span></div>
+          <div style="margin-bottom: 1.5rem;"><strong>8.</strong> <span data-highlight-part="2-alt"><strong>until</strong> Δ ≤ θ</span></div>
+          
+          <!-- Source Note -->
+          <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #4a5568; font-size: 11px; color: #a0aec0; text-align: center;">
+            <em>Source: insertlater.com</em>
+          </div>
+        </div>
+      </section>
 
-  <!-- Main Layout with Canvas + Actions -->
+    </div>
+  </div>
+
+  <!-- Main Layout with Canvas + Actions + Parameters -->
   <main>
     <div class="main-layout">
+      
+      <!-- Actions Panel (Left) - Playground Mode Only -->
+      <div class="actions-panel playground-only">
+        <div class="playground-section">
+          <h4>🚀 Actions</h4>
+          <div class="playground-actions">
+            <button onclick="runValueIterationClientSide()" class="btn-primary">Run Value Iteration</button>
+            <button onclick="runLiveValueIteration()" class="btn-secondary">Live Animation</button>
+            <button onclick="runLiveValueIteration_step_by_step()" class="btn-tutorial">Step-by-Step Mode</button>
+            <button onclick="followValuePolicy()" class="btn-accent">Follow Policy</button>
+          </div>
+
+          <!-- Manual Controls -->
+          <div style="margin-top: 1rem;">
+            <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #666; text-transform: uppercase;">Manual Control</h5>
+            <div class="dpad-grid" style="max-width: 120px; margin: 0;">
+              <div></div>
+              <button onclick="manualMove(0)">↑</button>
+              <div></div>
+              <button onclick="manualMove(2)">←</button>
+              <div style="font-size: 10px;">move</div>
+              <button onclick="manualMove(3)">→</button>
+              <div></div>
+              <button onclick="manualMove(1)">↓</button>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Panel for Tutorial/Introduction modes -->
+      <div class="actions-panel non-playground-actions">
+        
+        <!-- Main Actions -->
+        <div class="sidebar-section">
+          <h3>🚀 Actions</h3>
+          
+          <!-- Introduction Mode Actions -->
+          <div class="introduction-only">
+            <div class="button-row">
+              <button onclick="runValueIterationDemo()" class="btn-primary">✨ Run Algorithm</button>
+            </div>
+            <div class="button-row">
+              <button onclick="followOptimalPath()" id="follow-path-btn" class="btn-secondary" style="display: none;">🎯 Follow Path</button>
+            </div>
+            <div id="intro-status" class="status-display" style="display: none; margin-top: 0.5rem;">
+              <strong>Status:</strong> <span id="status-text">Ready</span>
+            </div>
+          </div>
+
+          <!-- Tutorial Mode Actions -->
+          <div class="tutorial-only">
+            <div id="tutorial-part-1-controls" class="tutorial-controls-part">
+              <p style="font-size: 11px; color: #666; margin: 0 0 0.5rem 0; line-height: 1.3;">
+                <strong>Explore the Environment:</strong><br>
+                Draw paths and use manual controls to understand states and actions.
+              </p>
+              <div class="button-row">
+                <button onclick="runValueIterationClientSide()" class="btn-primary">Run Algorithm</button>
+              </div>
+              <div class="button-row">
+                <button onclick="followValuePolicy()" class="btn-accent">Follow Policy</button>
+              </div>
+            </div>
+
+            <div id="tutorial-part-2-controls" class="tutorial-controls-part" style="display: none;">
+              <!-- Only Live Algorithm for Part 2 -->
+              <div style="margin-top: 0rem;">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Live Mode</h4>
+                <div class="button-row">
+                  <button onclick="runTutorialLiveValueIteration()" class="btn-secondary">Live Algorithm</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="tutorial-part-3-controls" class="tutorial-controls-part" style="display: none;">
+              <!-- Only Step-by-Step Mode for Part 3 -->
+              <div style="margin-top: 0rem;">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Step-by-Step Mode</h4>
+                <div class="button-row">
+                  <button onclick="runLiveValueIteration_step_by_step()" class="btn-tutorial">Step-by-Step</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+                    
+        <!-- Introduction Tutorial Prompt -->
+        <div class="sidebar-section introduction-only">
+          <h3>🎓 Learn More</h3>
+          <div class="button-row">
+            <button onclick="switchToTutorialMode()" class="btn-tutorial">Start Tutorial</button>
+          </div>
+        </div>
+
+        <!-- Manual Movement (Tutorial only) -->
+        <div class="collapsible-section tutorial-only">
+          <div class="collapsible-header" onclick="toggleCollapsible(this)">
+            <h3>🕹️ Manual Control</h3>
+            <span class="collapsible-toggle">▼</span>
+          </div>
+          <div class="collapsible-content">
+            <div class="dpad-grid">
+              <div></div>
+              <button onclick="manualMove(0)">↑</button>
+              <div></div>
+              <button onclick="manualMove(2)">←</button>
+              <div>move</div>
+              <button onclick="manualMove(3)">→</button>
+              <div></div>
+              <button onclick="manualMove(1)">↓</button>
+              <div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tutorial Settings (Part 2 only) -->
+        <div class="collapsible-section tutorial-only tutorial-part-2-only">
+          <div class="collapsible-header" onclick="toggleCollapsible(this)">
+            <h3>🎯 Tutorial Settings</h3>
+            <span class="collapsible-toggle">▼</span>
+          </div>
+          <div class="collapsible-content">
+            <div class="input-group">
+              <label>Speed:</label>
+              <input id="tutorialDelayMs" type="number" value="200" min="50" max="1000">
+              <span style="font-size: 10px; color: #666;">ms</span>
+            </div>
+            <div class="input-group">
+              <label>Iterations:</label>
+              <input id="tutorialLiveIters" type="number" value="1" min="1" max="5">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tutorial Navigation (Single, Dynamic) -->
+        <div class="sidebar-section tutorial-only">
+          <h3>📍 Navigation</h3>
+          <div class="button-row">
+            <button id="tutorial-nav-left" onclick="switchToIntroductionMode()" class="btn-secondary">← Back to Intro</button>
+            <button id="tutorial-nav-right" onclick="switchTutorialPart(2)" class="btn-primary">Part 2 →</button>
+          </div>
+        </div>
+
+        <!-- Hidden status elements (keep for JavaScript compatibility) -->
+        <div style="display: none;">
+          <div id="agentPosition" class="playground-only">The agent is currently at state (60, 540)</div>
+          <div id="tutorialAgentPosition" class="tutorial-only">The agent is currently at state (60, 540)</div>
+          <div id="iterationCount">Iterations: -</div>
+          <div id="deltaDisplay">Δ: -</div>
+          <div id="pathCheckResult">Path: -</div>
+        </div>
+
+      </div>
       
       <!-- Canvas Section with Controls and Status Bars -->
       <div class="canvas-and-controls">
@@ -929,253 +1456,81 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
           <canvas id="c" width="1000" height="600"></canvas>
         </div>
 
-        <!-- Canvas Status Bar -->
-        <div class="canvas-status-bar">
-          <!-- Agent Location (Left Side) -->
-          <div class="status-info">
-            <div id="agentPositionCompact" class="agent-status-compact">
-              Agent: (60, 540)
+        <!-- Canvas Status Bar with External Step-by-Step Buttons -->
+        <div class="canvas-status-bar-wrapper">
+          <!-- Left: Stop Button (Outside) -->
+          <div id="stepByStepStopContainer" style="display: none;">
+            <button onclick="stopStepByStep()" class="btn-mini btn-danger">🛑 Stop</button>
+          </div>
+          
+          <!-- Center: Canvas Status Bar -->
+          <div class="canvas-status-bar">
+            <!-- Status Info -->
+            <div class="status-info">
+              <div id="agentPositionCompact" class="agent-status-compact">
+                Agent: (60, 540)
+              </div>
+            </div>
+
+            <div class="status-info">
+              <div id="iterationCountCompact" class="iteration-status-compact">
+                Iterations: -
+              </div>
+              <div id="deltaDisplayCompact" class="iteration-status-compact">
+                Δ: -
+              </div>
             </div>
           </div>
+          
+          <!-- Right: Next Step Button (Outside) -->
+          <div id="stepByStepNextContainer" style="display: none;">
+            <button onclick="nextStepClick()" class="btn-mini btn-primary">▶️ Next</button>
+          </div>
+        </div>
 
-          <!-- Algorithm Status (Right Side) -->
-          <div class="status-info">
-            <div id="iterationCountCompact" class="iteration-status-compact">
-              Iterations: -
-            </div>
-            <div id="deltaDisplayCompact" class="iteration-status-compact">
-              Δ: -
+        <!-- Step-by-Step Status Bar (hidden by default) -->
+        <div id="stepByStepStatusBar" style="display: none;">
+          <div class="status-info" style="width: 100%; justify-content: center;">
+            <div id="stepByStepStatus" style="font-size: 12px; font-weight: 600; color: black; padding: 8px 12px; text-align: center; font-family: 'Courier New', monospace; line-height: 1.3;">
+              Ready to start step-by-step analysis...
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Actions Panel -->
-      <div class="actions-panel">
-        
-        <!-- Main Actions -->
-        <div class="sidebar-section">
-          <h3>🚀 Actions</h3>
-          
-          <!-- Introduction Mode Actions -->
-          <div class="introduction-only">
-            <div class="button-row">
-              <button onclick="runValueIterationDemo()" class="btn-primary">✨ Run Algorithm</button>
-            </div>
-            <div class="button-row">
-              <button onclick="followOptimalPath()" id="follow-path-btn" class="btn-secondary" style="display: none;">🎯 Follow Path</button>
-            </div>
-            <div id="intro-status" class="status-display" style="display: none; margin-top: 0.5rem;">
-              <strong>Status:</strong> <span id="status-text">Ready</span>
-            </div>
-          </div>
-
-          <!-- Tutorial Mode Actions -->
-          <div class="tutorial-only">
-            <div id="tutorial-part-1-controls" class="tutorial-controls-part">
-              <div class="button-row">
-                <button onclick="runValueIterationClientSide()" class="btn-primary">Run Algorithm</button>
-              </div>
-              <div class="button-row">
-                <button onclick="followValuePolicy()" class="btn-accent">Follow Policy</button>
-              </div>
-            </div>
-
-            <div id="tutorial-part-2-controls" class="tutorial-controls-part" style="display: none;">
-              <!-- Keep Run Algorithm from Part 1 -->
-              <div class="button-row">
-                <button onclick="runValueIterationClientSide()" class="btn-primary">Run Algorithm</button>
-              </div>
-              <div class="button-row">
-                <button onclick="followValuePolicy()" class="btn-accent">Follow Policy</button>
-              </div>
-              
-              <!-- Add Live Algorithm Controls -->
-              <div style="margin-top: 1rem;">
-                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Live Mode</h4>
-                <div class="button-row">
-                  <button onclick="runTutorialLiveValueIteration()" class="btn-secondary">Live Algorithm</button>
-                </div>
-              </div>
-            </div>
-
-            <div id="tutorial-part-3-controls" class="tutorial-controls-part" style="display: none;">
-              <!-- Keep Run Algorithm from Parts 1 & 2 -->
-              <div class="button-row">
-                <button onclick="runValueIterationClientSide()" class="btn-primary">Run Algorithm</button>
-              </div>
-              <div class="button-row">
-                <button onclick="followValuePolicy()" class="btn-accent">Follow Policy</button>
-              </div>
-              
-              <!-- Keep Live Algorithm from Part 2 -->
-              <div style="margin-top: 1rem;">
-                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Live Mode</h4>
-                <div class="button-row">
-                  <button onclick="runTutorialLiveValueIteration()" class="btn-secondary">Live Algorithm</button>
-                </div>
-              </div>
-              
-              <!-- Add Step-by-Step Mode -->
-              <div style="margin-top: 1rem;">
-                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Step-by-Step Mode</h4>
-                <div class="button-row">
-                  <button onclick="runLiveValueIteration_step_by_step()" class="btn-tutorial">Step-by-Step</button>
-                </div>
-                
-                <!-- Step-by-Step Controls (hidden by default, shown when step-by-step is active) -->
-                <div id="tutorialStepByStepControls" style="display: none; margin-top: 0.5rem;">
-                  <div id="tutorialStepByStepInfo" style="background: white; padding: 0.75rem; border-radius: 4px; border: 1px solid #ddd; font-family: monospace; font-size: 11px; line-height: 1.3; margin-bottom: 0.5rem; max-height: 120px; overflow-y: auto;">
-                    Ready to start...
-                  </div>
-                  <div class="button-row">
-                    <button onclick="nextStepClick()" class="btn-primary btn-compact">Next Step</button>
-                    <button onclick="stopStepByStep()" class="btn-danger btn-compact">Stop</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Playground Mode Actions -->
-          <div class="playground-only">
-            <div class="button-row">
-              <button onclick="runValueIterationClientSide()" class="btn-primary">Run Algorithm</button>
-            </div>
-            <div class="button-row">
-              <button onclick="followValuePolicy()" class="btn-accent">Follow Policy</button>
-              <button onclick="prepareLiveValueIteration()" class="btn-secondary">Live Mode</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Introduction Tutorial Prompt -->
-        <div class="sidebar-section introduction-only">
-          <h3>🎓 Learn More</h3>
-          <div class="button-row">
-            <button onclick="switchToTutorialMode()" class="btn-tutorial">Start Tutorial</button>
-          </div>
-        </div>
-
-        <!-- Manual Movement (Tutorial/Playground) -->
-        <div class="collapsible-section tutorial-only playground-only">
-          <div class="collapsible-header" onclick="toggleCollapsible(this)">
-            <h3>🕹️ Manual Control</h3>
-            <span class="collapsible-toggle">▼</span>
-          </div>
-          <div class="collapsible-content">
-            <div class="dpad-grid">
-              <div></div>
-              <button onclick="manualMove(0)">↑</button>
-              <div></div>
-              <button onclick="manualMove(2)">←</button>
-              <div>move</div>
-              <button onclick="manualMove(3)">→</button>
-              <div></div>
-              <button onclick="manualMove(1)">↓</button>
-              <div></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Settings (Playground Mode) -->
-        <div class="collapsible-section playground-only">
-          <div class="collapsible-header" onclick="toggleCollapsible(this)">
-            <h3>⚙️ Settings</h3>
-            <span class="collapsible-toggle">▼</span>
-          </div>
-          <div class="collapsible-content">
+      <!-- Parameters Panel (Right) - Playground Mode Only -->
+      <div class="parameters-panel playground-only">
+        <div class="playground-section">
+          <h4>⚙️ Parameters</h4>
+          <div class="playground-params">
             <div class="input-group">
-              <label>Discount γ:</label>
-              <input id="gamma" type="number" step="0.01" value="0.99">
+              <label>Discount Factor (γ):</label>
+              <input id="gamma" type="number" step="0.01" value="0.99" onchange="updateParameterDisplays()">
             </div>
             <div class="input-group">
-              <label>Threshold ε:</label>
-              <input id="threshold" type="number" step="1e-6" value="0.0001">
+              <label>Convergence Threshold (ε):</label>
+              <input id="threshold" type="number" step="1e-6" value="0.0001" onchange="updateParameterDisplays()">
             </div>
             <div class="input-group">
-              <label>Live Speed:</label>
-              <input id="delayMs" type="number" value="10" min="1" max="1000">
-              <span style="font-size: 10px; color: #666;">ms</span>
+              <label>Reward Function:</label>
+              <select id="rewardFunction" onchange="updateParameterDisplays()">
+                <option value="zero">Zero reward</option>
+                <option value="negative_distance">Negative distance</option>
+                <option value="positive_distance">Positive distance</option>
+              </select>
             </div>
             <div class="input-group">
-              <label>Stroke Width:</label>
-              <input type="range" id="strokeWidth" min="60" max="100" value="5">
-            </div>
-          </div>
-        </div>
-
-        <!-- Tutorial Settings (Parts 2+ only) -->
-        <div class="collapsible-section tutorial-only tutorial-part-2-plus">
-          <div class="collapsible-header" onclick="toggleCollapsible(this)">
-            <h3>🎯 Tutorial Settings</h3>
-            <span class="collapsible-toggle">▼</span>
-          </div>
-          <div class="collapsible-content">
-            <div class="input-group">
-              <label>Speed:</label>
-              <input id="tutorialDelayMs" type="number" value="200" min="50" max="1000">
-              <span style="font-size: 10px; color: #666;">ms</span>
+              <label>Animation Delay (ms):</label>
+              <input id="delayMs" type="number" value="120" min="10" max="2000">
             </div>
             <div class="input-group">
-              <label>Iterations:</label>
-              <input id="tutorialLiveIters" type="number" value="1" min="1" max="5">
-            </div>
-          </div>
-        </div>
-
-        <!-- Advanced Options (Playground) -->
-        <div class="collapsible-section playground-only">
-          <div class="collapsible-header" onclick="toggleCollapsible(this)">
-            <h3>🔬 Advanced</h3>
-            <span class="collapsible-toggle">▼</span>
-          </div>
-          <div class="collapsible-content">
-            <div class="input-group">
-              <label>Live Iterations:</label>
+              <label>Iterations per Run:</label>
               <input id="liveIters" type="number" value="1" min="1" max="10">
             </div>
-            <div class="button-row">
-              <button onclick="runLiveValueIteration_step_by_step()" class="btn-tutorial">Step Mode</button>
-            </div>
-            
-            <!-- Step-by-Step Controls (hidden by default, shown when step-by-step is active) -->
-            <div id="stepByStepControls" style="display: none; margin-top: 0.5rem;">
-              <div id="stepByStepInfo" style="background: white; padding: 0.75rem; border-radius: 4px; border: 1px solid #ddd; font-family: monospace; font-size: 11px; line-height: 1.3; margin-bottom: 0.5rem; max-height: 120px; overflow-y: auto;">
-                Ready to start...
-              </div>
-              <div class="button-row">
-                <button onclick="nextStepClick()" class="btn-primary btn-compact">Next Step</button>
-                <button onclick="stopStepByStep()" class="btn-danger btn-compact">Stop</button>
-              </div>
-            </div>
           </div>
         </div>
-
-        <!-- Tutorial Navigation (Single, Dynamic) -->
-        <div class="sidebar-section tutorial-only">
-          <h3>📍 Navigation</h3>
-          <div class="button-row">
-            <button id="tutorial-nav-left" onclick="switchToIntroductionMode()" class="btn-secondary">← Back to Intro</button>
-            <button id="tutorial-nav-right" onclick="switchTutorialPart(2)" class="btn-primary">Part 2 →</button>
-          </div>
-        </div>
-
-        <!-- Step-by-Step Controls (Playground only) -->
-        <div style="display: none;">
-          <!-- This section is now integrated into the Advanced section above -->
-        </div>
-
-        <!-- Hidden status elements (keep for JavaScript compatibility) -->
-        <div style="display: none;">
-          <div id="agentPosition" class="playground-only">The agent is currently at state (60, 540)</div>
-          <div id="tutorialAgentPosition" class="tutorial-only">The agent is currently at state (60, 540)</div>
-          <div id="iterationCount">Iterations: -</div>
-          <div id="deltaDisplay">Δ: -</div>
-          <div id="pathCheckResult">Path: -</div>
-        </div>
-
       </div>
+
     </div>
   </main>
 
@@ -1209,10 +1564,11 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
       }
     }
     
-    // Update controls bar width to match canvas width
+    // Update controls bar width to match canvas width and handle step-by-step status bar
     function updateControlsBarWidth(size) {
       const controlsBar = document.querySelector('.canvas-controls-bar');
-      const statusBar = document.querySelector('.canvas-status-bar');
+      const statusBarWrapper = document.querySelector('.canvas-status-bar-wrapper');
+      const stepByStepStatusBar = document.getElementById('stepByStepStatusBar');
       const canvasSizes = {
         small: '600px',
         medium: '800px', 
@@ -1222,8 +1578,18 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
       if (controlsBar && canvasSizes[size]) {
         controlsBar.style.width = canvasSizes[size];
       }
-      if (statusBar && canvasSizes[size]) {
-        statusBar.style.width = canvasSizes[size];
+      
+      // Update status bar wrapper width to match canvas
+      if (statusBarWrapper && canvasSizes[size]) {
+        statusBarWrapper.style.width = canvasSizes[size];
+      }
+      
+      // Update step-by-step status bar
+      if (stepByStepStatusBar && canvasSizes[size]) {
+        stepByStepStatusBar.style.width = canvasSizes[size];
+        // Ensure minimum width for step-by-step status bar
+        const minWidth = Math.max(parseInt(canvasSizes[size]), 800);
+        stepByStepStatusBar.style.minWidth = `${minWidth}px`;
       }
     }
     
@@ -1265,46 +1631,23 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
       }
     }
     
-    // Show/hide step-by-step controls under the step-by-step button
-    function showStepByStepControls() {
-      // Show controls based on current mode
-      if (isTutorialMode) {
-        const tutorialControls = document.getElementById('tutorialStepByStepControls');
-        if (tutorialControls) {
-          tutorialControls.style.display = 'block';
-        }
-      } else {
-        const playgroundControls = document.getElementById('stepByStepControls');
-        if (playgroundControls) {
-          playgroundControls.style.display = 'block';
-        }
+    // Updated layout function to prevent shifting
+    function updateCanvasControlsLayout() {
+      const mainLayout = document.querySelector('.main-layout');
+      if (mainLayout) {
+        mainLayout.style.alignItems = 'flex-start'; // Prevent centering that causes shifts
       }
-    }
-    
-    function hideStepByStepControls() {
-      // Hide controls in both modes
-      const tutorialControls = document.getElementById('tutorialStepByStepControls');
-      const playgroundControls = document.getElementById('stepByStepControls');
-      if (tutorialControls) {
-        tutorialControls.style.display = 'none';
+      
+      const canvasAndControls = document.querySelector('.canvas-and-controls');
+      if (canvasAndControls) {
+        canvasAndControls.style.position = 'relative';
+        canvasAndControls.style.width = 'auto';
       }
-      if (playgroundControls) {
-        playgroundControls.style.display = 'none';
-      }
-    }
-    
-    // Update step-by-step info content
-    function updateStepByStepContent(content) {
-      if (isTutorialMode) {
-        const tutorialInfo = document.getElementById('tutorialStepByStepInfo');
-        if (tutorialInfo) {
-          tutorialInfo.innerHTML = content;
-        }
-      } else {
-        const playgroundInfo = document.getElementById('stepByStepInfo');
-        if (playgroundInfo) {
-          playgroundInfo.innerHTML = content;
-        }
+      
+      const actionsPanel = document.querySelector('.actions-panel');
+      if (actionsPanel) {
+        actionsPanel.style.position = 'relative';
+        actionsPanel.style.flexShrink = '0'; // Prevent shrinking
       }
     }
     
@@ -1345,12 +1688,21 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
     // Override switchToTutorialMode to add scroll to top
     const originalSwitchToTutorialMode = window.switchToTutorialMode;
     window.switchToTutorialMode = function() {
+      // Stop step-by-step if it's running (additional check)
+      if (window._isLiveRunning && (typeof stepByStepPaused !== 'undefined' && stepByStepPaused)) {
+        console.log("🛑 Stopping step-by-step due to navigation (HTML override)");
+        if (typeof stopStepByStep === 'function') stopStepByStep();
+      }
+      
       if (originalSwitchToTutorialMode) {
         originalSwitchToTutorialMode();
       }
       
       // Initialize navigation for part 1
       updateTutorialNavigation(1);
+      
+      // Initialize global header for part 1
+      updateGlobalTutorialHeader(1);
       
       // Smooth scroll to top of page
       window.scrollTo({
@@ -1394,9 +1746,45 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
       }
     }
     
+    // Function to update global tutorial header
+    function updateGlobalTutorialHeader(partNumber) {
+      const titles = {
+        1: "Tutorial Part 1: State, Actions, and the Value Function",
+        2: "Tutorial Part 2: Putting the Iteration in Value Iteration", 
+        3: "Tutorial Part 3: Step-by-Step Analysis",
+        4: "Tutorial Part 4: Final Caveats"
+      };
+      
+      const titleElement = document.getElementById('tutorial-main-title');
+      if (titleElement && titles[partNumber]) {
+        titleElement.textContent = titles[partNumber];
+      }
+      
+      // Update global navigation buttons
+      const globalButtons = [
+        'part-1-btn-global',
+        'part-2-btn-global', 
+        'part-3-btn-global',
+        'part-4-btn-global'
+      ];
+      
+      globalButtons.forEach((btnId, index) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          btn.classList.toggle('active', index + 1 === partNumber);
+        }
+      });
+    }
+    
     // Override switchTutorialPart to handle body classes for part-specific visibility
     const originalSwitchTutorialPart = window.switchTutorialPart;
     window.switchTutorialPart = function(partNumber) {
+      // Stop step-by-step if it's running (additional check)
+      if (window._isLiveRunning && (typeof stepByStepPaused !== 'undefined' && stepByStepPaused)) {
+        console.log("🛑 Stopping step-by-step due to navigation (HTML override)");
+        if (typeof stopStepByStep === 'function') stopStepByStep();
+      }
+      
       if (originalSwitchTutorialPart) {
         originalSwitchTutorialPart(partNumber);
       }
@@ -1409,11 +1797,20 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
       
       // Update navigation buttons
       updateTutorialNavigation(partNumber);
+      
+      // Update global header
+      updateGlobalTutorialHeader(partNumber);
     };
     
     // Override switchToIntroductionMode to ensure proper cleanup
     const originalSwitchToIntroductionMode = window.switchToIntroductionMode;
     window.switchToIntroductionMode = function() {
+      // Stop step-by-step if it's running (additional check)
+      if (window._isLiveRunning && (typeof stepByStepPaused !== 'undefined' && stepByStepPaused)) {
+        console.log("🛑 Stopping step-by-step due to navigation (HTML override)");
+        if (typeof stopStepByStep === 'function') stopStepByStep();
+      }
+      
       if (originalSwitchToIntroductionMode) {
         originalSwitchToIntroductionMode();
       }
@@ -1428,32 +1825,30 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
       });
     };
     
-    // Initialize everything when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-      // Override step-by-step start to show controls under button
-      const originalRunStepByStep = window.runLiveValueIteration_step_by_step;
-      if (originalRunStepByStep) {
-        window.runLiveValueIteration_step_by_step = async function() {
-          // Show the step-by-step controls under the button
-          showStepByStepControls();
-          updateStepByStepContent('🚀 Starting step-by-step analysis... Click "Next Step" to begin!');
-          
-          // Call the original function
-          return originalRunStepByStep.apply(this, arguments);
-        };
+    // Override switchToPlaygroundMode to stop step-by-step
+    const originalSwitchToPlaygroundMode = window.switchToPlaygroundMode;
+    window.switchToPlaygroundMode = function() {
+      // Stop step-by-step if it's running (additional check)
+      if (window._isLiveRunning && (typeof stepByStepPaused !== 'undefined' && stepByStepPaused)) {
+        console.log("🛑 Stopping step-by-step due to navigation (HTML override)");
+        if (typeof stopStepByStep === 'function') stopStepByStep();
       }
       
-      // Override stop to hide controls
-      const originalStopStepByStep = window.stopStepByStep;
-      if (originalStopStepByStep) {
-        window.stopStepByStep = function() {
-          // Hide the step-by-step controls
-          hideStepByStepControls();
-          
-          // Call original stop function
-          return originalStopStepByStep.apply(this, arguments);
-        };
+      if (originalSwitchToPlaygroundMode) {
+        originalSwitchToPlaygroundMode();
       }
+      
+      // Smooth scroll to top of page
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    };
+    
+    // Initialize everything when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set up proper layout to prevent shifts
+      updateCanvasControlsLayout();
 
       // Override followValuePolicy with position updating version
       originalFollowValuePolicy = window.followValuePolicy;
@@ -1524,24 +1919,27 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
         };
       }
 
-      // Auto-expand important sections
+      // Auto-expand important sections (only in tutorial mode)
       const importantSections = [
         '.collapsible-section .collapsible-header'
       ];
       
-      importantSections.forEach(selector => {
-        const headers = document.querySelectorAll(selector);
-        headers.forEach(header => {
-          // Only expand the first two sections by default
-          const section = header.closest('.collapsible-section');
-          const allSections = Array.from(document.querySelectorAll('.collapsible-section'));
-          const index = allSections.indexOf(section);
-          
-          if (index < 2) {
-            toggleCollapsible(header);
-          }
+      // Only auto-expand in tutorial mode
+      if (document.body.classList.contains('tutorial-mode')) {
+        importantSections.forEach(selector => {
+          const headers = document.querySelectorAll(selector);
+          headers.forEach(header => {
+            // Only expand the first two sections by default
+            const section = header.closest('.collapsible-section');
+            const allSections = Array.from(document.querySelectorAll('.collapsible-section'));
+            const index = allSections.indexOf(section);
+            
+            if (index < 2) {
+              toggleCollapsible(header);
+            }
+          });
         });
-      });
+      }
       
       // Set initial canvas size dropdown and controls bar width
       updateCanvasSizeDropdown('small');
@@ -1555,6 +1953,7 @@ body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
       if (document.body.classList.contains('tutorial-mode')) {
         document.body.classList.add('tutorial-part-1');
         updateTutorialNavigation(1);
+        updateGlobalTutorialHeader(1);
       }
     });
   </script>

@@ -1,6 +1,10 @@
-// Mode switching functionality
+// This is a test comment to increment the version
 let isTutorialMode = true;
 let currentTutorialPart = 1;
+
+// Step-by-step functionality variables
+let stepByStepPaused = false;
+let stepByStepResolver = null;
 
 // Enhanced function to handle highlighting for any tutorial part with multiple color options
 function handleTutorialHighlighting(partNumber) {
@@ -100,6 +104,12 @@ function removeAlgorithmHighlighting() {
 }
 
 function switchTutorialPart(partNumber) {
+  // Stop step-by-step if it's running
+  if (window._isLiveRunning && (stepByStepPaused || stepByStepResolver)) {
+    console.log("🛑 Stopping step-by-step due to navigation");
+    stopStepByStep();
+  }
+  
   currentTutorialPart = partNumber;
   console.log("🔄 Switching to tutorial part", partNumber);
   resetEverything();
@@ -212,6 +222,12 @@ function switchTutorialPart(partNumber) {
 }
 
 function switchToTutorialMode() {
+  // Stop step-by-step if it's running
+  if (window._isLiveRunning && (stepByStepPaused || stepByStepResolver)) {
+    console.log("🛑 Stopping step-by-step due to navigation");
+    stopStepByStep();
+  }
+  
   isTutorialMode = true;
   document.body.className = 'tutorial-mode';
   
@@ -244,7 +260,14 @@ function switchToTutorialMode() {
   document.getElementById('header-subtitle').textContent = 'Learn how value iteration works step by step';
 }
 
+// Simple fix for switchToPlaygroundMode - just ensure proper visibility
 function switchToPlaygroundMode() {
+  // Stop step-by-step if it's running
+  if (window._isLiveRunning && (stepByStepPaused || stepByStepResolver)) {
+    console.log("🛑 Stopping step-by-step due to navigation");
+    stopStepByStep();
+  }
+  
   isTutorialMode = false;
   document.body.className = 'playground-mode';
   
@@ -279,13 +302,20 @@ function switchToPlaygroundMode() {
   document.querySelectorAll('.tutorial-only').forEach(el => {
     el.classList.add('hidden');
     el.classList.remove('show');
-    el.style.display = 'none'; // Add this line
+    el.style.display = 'none';
   });
   document.querySelectorAll('.playground-only').forEach(el => {
     el.classList.remove('hidden');
     el.classList.add('show');
-    el.style.display = 'block'; // Add this line
+    el.style.display = 'block';
   });
+  
+  // Ensure the playground controls are visible and properly styled
+  const playgroundControls = document.querySelector('.playground-controls');
+  if (playgroundControls) {
+    playgroundControls.style.display = 'block';
+    console.log("✅ Playground controls are now visible");
+  }
   
   // Update header subtitle
   document.getElementById('header-subtitle').textContent = 'Experiment with value iteration parameters';
@@ -294,7 +324,6 @@ function switchToPlaygroundMode() {
   document.body.classList.add('playground-mode');
 }
 
-// Initialize in tutorial mode when DOM is loaded
 // Initialize in INTRODUCTION mode when DOM is loaded (UPDATED)
 document.addEventListener('DOMContentLoaded', function() {
   // Set initial state to INTRODUCTION mode
@@ -427,11 +456,9 @@ async function runTutorialLiveValueIteration() {
           if (!validSet.has(neighborKey)) continue;
 
           const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
-          let reward = 0;
+          const reward = calculateReward([x, y], [nx, ny], goal_pos); // Use new reward function
 
-          const val = nextDist < boxSize
-            ? 10000
-            : reward + gamma * (liveValues.get(neighborKey) || -1000);
+          const val = reward + gamma * (liveValues.get(neighborKey) || -1000);
 
           if (val > maxVal) {
             maxVal = val;
@@ -600,10 +627,8 @@ canvas.on('path:created', () => {
 // Configure drawing brush for obstacles (white paths)
 const brush = canvas.freeDrawingBrush;
 brush.color = 'white';
-brush.width = parseInt(document.getElementById("strokeWidth")?.value || 5);
-document.getElementById("strokeWidth")?.addEventListener("input", e => {
-  brush.width = parseInt(e.target.value);
-});
+brush.width = 60;
+
 
 let iterationDisplay = document.getElementById("iterationCount");
 
@@ -917,14 +942,14 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
         if (!validSet.has(neighborKey)) continue;  // skip if neighbor cell is not walkable
         // Compute reward: positive if moving closer to goal, negative if farther
         const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
-        let reward = 0;//currDist - nextDist;
+        let reward = calculateReward([x, y], [nx, ny], goal_pos); // Use new reward function
         // Apply a small step penalty for any move
         //reward -= stepCost;
         // Calculate value for this action
         let val;
         if (nextDist < boxSize) {
           // If this move reaches (or comes within one cell of) the goal, treat as terminal
-          val = 10000;  // no future value since goal would be reached
+          val = reward;  // Use reward from calculateReward function
         } else {
           val = reward + gamma * (values.get(neighborKey) || 0);
         }
@@ -1002,6 +1027,76 @@ function updateDeltaDisplay(delta) {
     } else {
       deltaDisplay.innerText = `Δ: ${delta.toFixed(6)}`;
     }
+  }
+}
+
+// Function to update displays when parameters change
+function updateParameterDisplays() {
+  const gamma = parseFloat(document.getElementById("gamma")?.value) || 0.99;
+  const threshold = parseFloat(document.getElementById("threshold")?.value) || 1e-4;
+  const rewardFunction = document.getElementById("rewardFunction")?.value || 'zero';
+  
+  console.log(`📊 Parameters updated: γ=${gamma}, ε=${threshold}, reward=${rewardFunction}`);
+  
+  // Update any running step-by-step displays
+  if (window._isLiveRunning && stepByStepPaused) {
+    // Refresh the current step-by-step display with new parameters
+    console.log("🔄 Refreshing step-by-step with new parameters");
+  }
+}
+
+// Get current reward function setting
+function getCurrentRewardFunction() {
+  return document.getElementById("rewardFunction")?.value || 'zero';
+}
+
+// Calculate reward based on current reward function setting
+function calculateReward(currentPos, nextPos, goalPos) {
+  const rewardFunction = getCurrentRewardFunction();
+  
+  // Check if reaching goal
+  const nextDist = Math.hypot(nextPos[0] - goalPos[0], nextPos[1] - goalPos[1]);
+  if (nextDist < 20) { // BOX size
+    return 10; // Always give positive reward for reaching goal
+  }
+  
+  if (rewardFunction === 'negative_distance') {
+    // Negative distance to goal
+    const distanceToGoal = Math.hypot(nextPos[0] - goalPos[0], nextPos[1] - goalPos[1]);
+    return -distanceToGoal / 20; // Normalize by box size
+  } else if (rewardFunction === 'positive_distance') {
+    // Positive reward for getting closer to goal
+    const currentDist = Math.hypot(currentPos[0] - goalPos[0], currentPos[1] - goalPos[1]);
+    const nextDist = Math.hypot(nextPos[0] - goalPos[0], nextPos[1] - goalPos[1]);
+    return (currentDist - nextDist) / 20; // Positive if getting closer
+  } else {
+    // Zero reward (default)
+    return 0;
+  }
+}
+
+// Format numbers for step-by-step display: >=10 shows whole numbers, <10 shows 1 decimal
+function formatStepByStepNumber(num) {
+  if (Math.abs(num) >= 10) {
+    return Math.round(num).toString();
+  } else {
+    return num.toFixed(1);
+  }
+}
+
+// Function to switch reward function and update any running algorithms
+function switchRewardFunction(newRewardFunction) {
+  const rewardSelect = document.getElementById("rewardFunction");
+  if (rewardSelect) {
+    rewardSelect.value = newRewardFunction;
+  }
+  
+  console.log(`🎯 Switched to reward function: ${newRewardFunction}`);
+  updateParameterDisplays();
+  
+  // If we're in live mode, we might want to restart or update
+  if (window._isLiveRunning) {
+    console.log("⚠️ Reward function changed during live execution");
   }
 }
 
@@ -1090,10 +1185,10 @@ async function runLiveValueIteration() {
           continue;
         }
 
-        const lastDelta = liveDeltaMap.get(stateKey);
-        if (lastDelta !== undefined && lastDelta < threshold) {
-          continue;
-        }
+        // const lastDelta = liveDeltaMap.get(stateKey);
+        // if (lastDelta !== undefined && lastDelta < threshold) {
+        //   continue;
+        // }
 
         greenBox.set({ left: x - boxSize / 2, top: y - boxSize / 2 });
         canvas.bringToFront(greenBox);
@@ -1110,10 +1205,10 @@ async function runLiveValueIteration() {
           if (!validSet.has(neighborKey)) continue;
 
           const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
-          let reward = 0;
+          const reward = calculateReward([x, y], [nx, ny], goal_pos); // Use new reward function
 
           const val = nextDist < boxSize
-            ? 10000
+            ? 10 // Simple goal reward for tutorial
             : reward + gamma * (liveValues.get(neighborKey) || -1000);
 
           if (val > maxVal) {
@@ -1361,11 +1456,7 @@ async function checkPolicyPathLength() {
   console.warn("🕓 Max steps exceeded without reaching goal");
 }
 
-// Step-by-step functionality (for playground mode and tutorial part 3)
-let stepByStepState = null;
-let stepByStepPaused = false;
-let stepByStepResolver = null;
-
+// Step-by-Step Value Iteration with Status Bar
 async function runLiveValueIteration_step_by_step() {
   console.log("🔍 Step-by-step function called");
   
@@ -1396,7 +1487,6 @@ async function runLiveValueIteration_step_by_step() {
 
   liveValueIterationState = await parseCanvasToState();
 
-
   const { walkableMask, goal_pos } = liveValueIterationState;
   const boxSize = 20;
   const goalKey = `${goal_pos[0]},${goal_pos[1]}`;
@@ -1408,6 +1498,8 @@ async function runLiveValueIteration_step_by_step() {
     2: [-boxSize, 0],   // left
     3: [boxSize, 0],    // right
   };
+
+  const actionNames = ["up", "down", "left", "right"];
 
   function isCellWalkable(cx, cy) {
     if (cx - 10 < 0 || cy - 10 < 0 || cx + 9 >= walkableMask[0].length || cy + 9 >= walkableMask.length) {
@@ -1450,48 +1542,10 @@ async function runLiveValueIteration_step_by_step() {
     }
   }
 
-  // Find and show step-by-step controls - use different elements for tutorial vs playground
-  let stepByStepControls, stepByStepInfo;
-  
-  if (isTutorialMode) {
-    stepByStepControls = document.getElementById("tutorialStepByStepControls");
-    stepByStepInfo = document.getElementById("tutorialStepByStepInfo");
-    console.log("🎓 Using tutorial step-by-step controls");
-  } else {
-    stepByStepControls = document.getElementById("stepByStepControls");
-    stepByStepInfo = document.getElementById("stepByStepInfo");
-    console.log("🛝 Using playground step-by-step controls");
-  }
-  
-  console.log("🔍 Looking for stepByStepControls element:", stepByStepControls);
-  console.log("🔍 Looking for stepByStepInfo element:", stepByStepInfo);
-  
-  if (!stepByStepControls) {
-    console.error("❌ stepByStepControls element not found!");
-    window._isLiveRunning = false;
-    return;
-  }
-
-  if (!stepByStepInfo) {
-    console.error("❌ stepByStepInfo element not found!");
-    window._isLiveRunning = false;
-    return;
-  }
-
-  // Force show the controls
-  stepByStepControls.style.display = "block";
-  stepByStepControls.style.visibility = "visible";
-  console.log("👁️ Step-by-step controls should now be visible");
-  
-  updateStepByStepContent("🚀 Starting step-by-step analysis... Click 'Next Step' to begin!");
-  console.log("📝 Updated stepByStepInfo content");
-
-  // Also check if Next Step button exists
-  const nextStepBtn = stepByStepControls.querySelector('button[onclick="nextStepClick()"]');
-  console.log("🔘 Next Step button found:", nextStepBtn);
-  if (!nextStepBtn) {
-    console.error("❌ Next Step button not found in controls!");
-  }
+  // Show step-by-step controls and status bar
+  showStepByStepControls();
+  showStepByStepStatusBar();
+  updateStepByStepStatusBar("<b>🚀 Starting step-by-step analysis...</b> Click 'Next Step' to begin!");
 
   try {
     console.log("🔄 Starting infinite step-by-step loop");
@@ -1519,14 +1573,14 @@ async function runLiveValueIteration_step_by_step() {
           // Display the goal value
           if (liveArrowMap.has(stateKey)) {
             liveArrowMap.get(stateKey).set({ 
-              text: "10.0",
+              text: "10",
               fontSize: 12,
               fill: 'white',
               stroke: 'black',
               strokeWidth: 1
             });
           } else {
-            const goalValueDisplay = new fabric.Text("10.0", {
+            const goalValueDisplay = new fabric.Text("10", {
               left: x,
               top: y,
               fontSize: 12,
@@ -1559,62 +1613,58 @@ async function runLiveValueIteration_step_by_step() {
           await new Promise(r => setTimeout(r, delayMs));
         }
 
-        const actionNames = ["up", "down", "left", "right"];
-        const actionArrows = ["↑", "↓", "←", "→"];
         const prevVal = liveValues.get(stateKey) || 0; // Use 0 as default for step-by-step
         
-        // Build detailed analysis for each action
-        let actionAnalysis = `<div style="background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">`;
-        actionAnalysis += `<h4 style="margin: 0 0 1rem 0; color: #1976d2;">Analyzing State Actions</h4>`;
-        actionAnalysis += `<strong>Current value V(s) = ${prevVal.toFixed(4)}</strong><br><br>`;
-        actionAnalysis += `<strong>Evaluating each action:</strong><br><br>`;
-        
         let maxVal = -Infinity;
-        let bestAction = null;
+        let bestActions = [];
+        let bestReward = 0;
+        let bestNextValue = 0;
+        let bestNextState = '';
         
+        // Find all actions that lead to the maximum value
         for (const [action, [dx, dy]] of Object.entries(directions)) {
           const actionNum = parseInt(action);
           const nx = x + dx;
           const ny = y + dy;
           const neighborKey = `${nx},${ny}`;
-          const actionName = actionNames[actionNum];
           let val;
+          let reward; // Single declaration of reward here
+          let nextStateValue = 0;
           
           if (!validSet.has(neighborKey)) {
-            actionAnalysis += `• <strong>${actionName} ${actionArrows[actionNum]}</strong>: Invalid move (hits boundary/obstacle)<br>`;
             val = -Infinity;
+            reward = 0;
           } else {
             const nextDist = Math.hypot(nx - goal_pos[0], ny - goal_pos[1]);
-            let reward = 0; // Reward is 0 for all non-terminal states
-            const nextStateValue = liveValues.get(neighborKey) || 0; // Use 0 as default for step-by-step
+            nextStateValue = liveValues.get(neighborKey) || 0;
             
-            if (nextDist < boxSize) {
-              // Reaching goal - use reward of 10 for step-by-step to keep numbers manageable
-              val = 10;
-              actionAnalysis += `• <strong>${actionName} ${actionArrows[actionNum]}</strong>: r(s,a,s') = 0, reaches GOAL → V = 10<br>`;
-            } else {
-              val = reward + gamma * nextStateValue;
-              actionAnalysis += `• <strong>${actionName} ${actionArrows[actionNum]}</strong>: r(s,a,s') = ${reward}, V(s') = ${nextStateValue.toFixed(4)} → V = ${reward} + ${gamma} × ${nextStateValue.toFixed(4)} = ${val.toFixed(4)}<br>`;
-            }
+            reward = calculateReward([x, y], [nx, ny], goal_pos); // Just assign, don't redeclare
+            val = reward + gamma * nextStateValue;
           }
           
           if (val > maxVal) {
             maxVal = val;
-            bestAction = actionNum;
+            bestActions = [actionNum];
+            bestReward = reward;
+            bestNextValue = nextStateValue;
+            bestNextState = `${nx},${ny}`;
+          } else if (val === maxVal && val !== -Infinity) {
+            bestActions.push(actionNum);
           }
         }
         
         const deltaLocal = Math.abs(prevVal - maxVal);
         
-        actionAnalysis += `<br><div style="background: #c8e6c9; padding: 0.5rem; border-radius: 4px; margin-top: 1rem;">`;
-        actionAnalysis += `<strong>📈 Best action: ${actionNames[bestAction]} ${actionArrows[bestAction]}</strong><br>`;
-        actionAnalysis += `<strong>📊 New V(s) = ${maxVal.toFixed(4)}</strong><br>`;
-        actionAnalysis += `<strong>📉 Change |V'(s) - V(s)| = ${deltaLocal.toFixed(6)}</strong><br>`;
-        actionAnalysis += `<em>Value ${maxVal.toFixed(1)} will be displayed on the state</em>`;
-        actionAnalysis += `</div></div>`;
+        // Create action list string (e.g., "up/left/right")
+        const actionString = bestActions.map(a => actionNames[a]).join('/');
         
-        // Display detailed analysis
-        updateStepByStepContent(actionAnalysis);
+        // Get next state coordinates for display
+        const [nextX, nextY] = bestNextState.split(',').map(Number);
+        
+        // Update step-by-step status bar with two-line format and color coding
+        const line1 = `<b>V(${x},${y})</b> = ${prevVal.toFixed(2)} | <b>Max action</b> = ${actionString} | <b>S'</b> = (${nextX},${nextY}) | <span style="background-color: yellow; padding: 2px 4px; border-radius: 3px;"><b>r(s')</b> = ${bestReward.toFixed(2)}</span> | <span style="background-color: cyan; padding: 2px 4px; border-radius: 3px;"><b>V(s')</b> = ${bestNextValue.toFixed(2)}</span> | <b>γ</b> = ${gamma.toFixed(2)}`;
+        const line2 = `<b>V'(${x},${y})</b> ← <span style="background-color: yellow; padding: 2px 4px; border-radius: 3px;">${bestReward.toFixed(2)}</span> + ${gamma.toFixed(2)} * <span style="background-color: cyan; padding: 2px 4px; border-radius: 3px;">${bestNextValue.toFixed(2)}</span> = ${maxVal.toFixed(2)}`;
+        updateStepByStepStatusBar(line1, line2);
 
         // Wait for user to click "Next Step"
         console.log("⏸️ Waiting for user to click Next Step...");
@@ -1634,7 +1684,7 @@ async function runLiveValueIteration_step_by_step() {
         liveDeltaMap.set(stateKey, deltaLocal);
         delta = Math.max(delta, deltaLocal);
         liveValues.set(stateKey, maxVal);
-        livePolicyMap.set(stateKey, bestAction);
+        livePolicyMap.set(stateKey, bestActions[0]); // Use first best action for policy
 
         // Update delta display after each state
         updateDeltaDisplay(delta);
@@ -1661,7 +1711,7 @@ async function runLiveValueIteration_step_by_step() {
         }
 
         // Add value text instead of arrow for step-by-step mode
-        const valueText = maxVal.toFixed(1); // Show value with 1 decimal place
+        const valueText = formatStepByStepNumber(maxVal);
         if (liveArrowMap.has(stateKey)) {
           liveArrowMap.get(stateKey).set({ 
             text: valueText,
@@ -1699,12 +1749,8 @@ async function runLiveValueIteration_step_by_step() {
       updateDeltaDisplay(delta);
       checkPolicyPathLength();
       
-      // Show iteration completion message and continue to next iteration
-      updateStepByStepContent(`<div style="background: #fff3e0; padding: 1rem; border-radius: 8px; text-align: center; border: 2px solid #ff9800;">
-        <h4 style="margin: 0 0 0.5rem 0; color: #f57c00;">📋 Iteration ${liveIterationCount} Complete!</h4>
-        <p style="margin: 0; color: #ef6c00;">All states processed. Δ = ${delta.toFixed(6)}<br>
-        <strong>Click "Next Step" to start iteration ${liveIterationCount + 1}</strong></p>
-      </div>`);
+      // Show iteration completion message in status bar
+      updateStepByStepStatusBar(`<b>📋 Iteration ${liveIterationCount} Complete!</b> Δ = ${delta.toFixed(6)} - Click "Next Step" to start iteration ${liveIterationCount + 1}`);
       
       // Wait for user to start next iteration
       console.log("⏸️ Waiting for user to start next iteration...");
@@ -1728,13 +1774,15 @@ async function runLiveValueIteration_step_by_step() {
     window._isLiveRunning = false;
     
     // Show final message when stopped
-    updateStepByStepContent(`<div style="background: #ffebee; padding: 1rem; border-radius: 8px; text-align: center; border: 2px solid #f44336;">
-      <h4 style="margin: 0 0 0.5rem 0; color: #d32f2f;">🛑 Step-by-step stopped</h4>
-      <p style="margin: 0; color: #c62828;">You can restart step-by-step mode or use "Follow Optimal Policy" to see the agent navigate.</p>
-    </div>`);
+    updateStepByStepStatusBar("<b>🛑 Step-by-step stopped</b> - You can restart step-by-step mode or use 'Follow Optimal Policy' to see the agent navigate.");
     
     // Hide step-by-step controls when stopped
     hideStepByStepControls();
+    
+    // Hide status bar after a short delay to show the final message
+    setTimeout(() => {
+      hideStepByStepStatusBar();
+    }, 3000);
   }
 }
 
@@ -1750,7 +1798,71 @@ function nextStepClick() {
   }
 }
 
-// Function to stop step-by-step iteration
+// Show/hide step-by-step controls in the new locations
+function showStepByStepControls() {
+  // Show buttons beside the canvas status bar (now external)
+  const stopContainer = document.getElementById('stepByStepStopContainer');
+  const nextContainer = document.getElementById('stepByStepNextContainer');
+  
+  if (stopContainer) {
+    stopContainer.style.display = 'block';
+  }
+  if (nextContainer) {
+    nextContainer.style.display = 'block';
+  }
+  
+  console.log("👁️ Step-by-step controls shown external to canvas status bar");
+}
+
+function hideStepByStepControls() {
+  // Hide buttons beside the canvas status bar
+  const stopContainer = document.getElementById('stepByStepStopContainer');
+  const nextContainer = document.getElementById('stepByStepNextContainer');
+  
+  if (stopContainer) {
+    stopContainer.style.display = 'none';
+  }
+  if (nextContainer) {
+    nextContainer.style.display = 'none';
+  }
+  
+  console.log("🙈 Step-by-step controls hidden");
+}
+
+// Add these new functions to show/hide the step-by-step status bar
+function showStepByStepStatusBar() {
+  const statusBar = document.getElementById('stepByStepStatusBar');
+  if (statusBar) {
+    statusBar.style.display = 'flex';
+  }
+}
+
+function hideStepByStepStatusBar() {
+  const statusBar = document.getElementById('stepByStepStatusBar');
+  if (statusBar) {
+    statusBar.style.display = 'none';
+  }
+}
+
+function updateStepByStepStatusBar(line1, line2 = null) {
+  const statusText = document.getElementById('stepByStepStatus');
+  if (statusText) {
+    if (line2) {
+      // Two-line format for step analysis
+      statusText.innerHTML = `<div style="margin-bottom: 4px;">${line1}</div><div>${line2}</div>`;
+    } else {
+      // Single line format for other messages
+      statusText.innerHTML = `<div>${line1}</div>`;
+    }
+    statusText.style.color = 'black';
+    statusText.style.fontWeight = '500';
+    statusText.style.lineHeight = '1.4';
+    statusText.style.fontSize = '12px';
+    statusText.style.whiteSpace = 'nowrap'; // Prevent wrapping within each line
+  }
+}
+
+// Also modify the stopStepByStep function to hide the status bar
 function stopStepByStep() {
   console.log("🛑 Stop step-by-step clicked");
   
@@ -1764,8 +1876,9 @@ function stopStepByStep() {
   }
   stepByStepPaused = false;
   
-  // Hide step-by-step controls
+  // Hide step-by-step controls and status bar
   hideStepByStepControls();
+  hideStepByStepStatusBar();
   
   resetGreenBox();
 }
@@ -1775,6 +1888,12 @@ let hasRunValueIteration = false;
 
 // Switch to Introduction Mode Function
 function switchToIntroductionMode() {
+  // Stop step-by-step if it's running
+  if (window._isLiveRunning && (stepByStepPaused || stepByStepResolver)) {
+    console.log("🛑 Stopping step-by-step due to navigation");
+    stopStepByStep();
+  }
+  
   // Remove all mode classes
   document.body.className = '';
   
