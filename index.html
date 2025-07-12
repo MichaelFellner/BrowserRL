@@ -1184,7 +1184,14 @@ body.playground-mode .non-playground-actions {
         <div id="tutorial-part-2" class="tutorial-part" style="display: none;">
           <div class="tutorial-step">
             <h3><span data-highlight-part="2">Chaos to Order</span></h3>
-            <p>Value iteration starts by assigning either random values, or some constant value (like 0) to every state. At this point the value function is inaccurate. (See the <b>first</b> orange highlighted line). But ultimately, we will get an accurate value for each state. We'll do this by <i>iterating</i> through every single state in the state-space (See the <b>second</b> orange highlighted line). Then, for each state, we update its value to something that, on average, is more accurate. (See part 3 for how its updated). V(s) is the current value of a state, V'(s) denotes the next value of a state. The <b>third</b> orange line is saying that V'(s) is a result of what is happening on the right side of the arrow. The <b>fourth</b> orange line then says to update the value function to use the new values.</p>
+            <p>Value iteration starts by assigning either random values, or some constant value (like 0) to every state. 
+                At this point the value function is inaccurate. (<b>Line 1</b>). But ultimately, we will get an accurate value for each state.
+                 We'll do this by <i>iterating</i> through every single state in the state-space (<b>Line 2</b>). Then, for each state, we update its value to something that, 
+                 on average, is more accurate. 
+                 (See part 3 for how its updated). V(s) is the current value of a state, V'(s) denotes the next value of a state. 
+                Line <b>5</b> is saying that V'(s) is a result of what is happening on the right side of the arrow. 
+                Line <b>4</b> then says to update the value function to use the new values. We cannot update V(s) to V'(s) immediately when V'(s) is calculated because we still 
+            want the original V(s) to be used by other states in the loop.</p>
           </div>
           
           <div class="tutorial-step">
@@ -1201,7 +1208,14 @@ body.playground-mode .non-playground-actions {
             <h3>Introducing the Reward Function</h3>
             <p>It's time to look at that last part of the algorithm. The crucial part when we update the current value of a state, V(s), and hopefully make it into something more accurate, V'(s). First we have to introduce one more key term:</p>
             <ul>
-              <li><b>Reward Function</b>: The reward function, r(s), takes in a state and outputs a reward. Crucially, <i>reward is different than value</i>. A reward function just tells you how immediately rewarding a current state is, but it does not take into account other states. So say you are at an amusement park and roller coaster A is very fun but has a super long line, while roller coaster B is kinda fun but has no line. Coaster A will have a higher reward than B, but the beginning of the line will have a higher <i>value</i> for coaster B than coaster A.</li>
+              <li><b>Reward Function</b>: The reward function, r(s), takes in a state and outputs a reward. Crucially, <i>reward is different than value</i>. A reward function just tells you how immediately rewarding a current state is, but it does not take into account other states. So say you are at an amusement park and roller coaster A is very fun but has a super long line, while roller coaster B is kinda fun but has no line. Coaster A will have a higher reward than B, but the beginning of the line will have a higher <i>value</i> for coaster B than coaster A.
+            Currently, the reward function for this environment is that the goal has a reward of 10, and every other state has 0 reward.
+        <br>
+        <b>Challenge: In Playground mode, try changing the reward function to be "distance to goal", meaning that states closer to the goal have a higher reward. See if you can 
+            find the problem with using this reward function.
+        </b>
+    </li>
+              
             </ul>
           </div>
           
@@ -1394,7 +1408,7 @@ body.playground-mode .non-playground-actions {
         <!-- Tutorial Settings (Part 2 only) -->
         <div class="collapsible-section tutorial-only tutorial-part-2-only">
           <div class="collapsible-header" onclick="toggleCollapsible(this)">
-            <h3>🎯 Tutorial Settings</h3>
+            <h3>Live Animation Settings</h3>
             <span class="collapsible-toggle">▼</span>
           </div>
           <div class="collapsible-content">
