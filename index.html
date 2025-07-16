@@ -1121,13 +1121,11 @@ body.playground-mode .non-playground-actions {
   <main class="introduction-only">
     <section class="introduction-section">
       <div class="introduction-content">
-        <h2>Welcome to Value Iteration!</h2>
+        <h2>Value Iteration: How to Solve a Maze</h2>
         <p>
-          Value iteration is a fundamental algorithm in reinforcement learning that helps agents find optimal paths through environments. 
-          In the interactive maze below, watch as the algorithm calculates the best route from the green starting position to the purple goal.
-        </p>
-        <p>
-          <strong>Try it out:</strong> Draw white paths to connect the start and goal areas, then run the algorithm to see the magic happen!
+          Draw a path connecting the green square to the purple one, then click "run algorithm". Behind the scenes, <i>Value Iteration</i> will calculate 
+          the best way for the green square to complete the maze you just drew. Afterwards, click "Start Tutorial" if you want to learn more and understand
+          why this algorithm is so important to know before going further in reinforcement learning.
         </p>
       </div>
     </section>
@@ -1156,67 +1154,120 @@ body.playground-mode .non-playground-actions {
         <div id="tutorial-part-1" class="tutorial-part">
           <div class="tutorial-step">
             <h3>Introduction</h3>
-            <p>Welcome to the Value Iteration Tutorial! Our goal is to understand this algorithm. In this part, we will learn 5 key terms:</p>
-            <ul>
-              <li><b>Agent</b>: This is the thing that learns by interacting with the environment. In the maze below, the green square is our agent.</li>
-              <li><b>State</b>: States compose an environment. In the maze below, every single place the agent can be is a different state.</li>
-              <li><b>Action</b>: An action is something the agent can do to interact with the environment.</li>
-              <li><b>Value Function</b>: The value function takes in a state and outputs its value. States closer to the goal tend to have higher value.</li>
-              <li><b>Policy</b>: A policy tells the agent what actions to take in each state. With the correct value function, we can derive the optimal policy!</li>
-            </ul>
-            <p>Value Iteration is an algorithm used to find the correct value function and thus allow the agent to use the optimal policy!</p>
+            <p>Welcome to the Value Iteration Tutorial! Our goal is to understand this algorithm on the right. <b>NOTE:</b> Don't worry about understanding it right now, we 
+                will walk through each line throughout this tutorial.</p>
+                </div>
+            <div class="tutorial-step"> 
+                <h3>Let's Learn Some Terms</h3>
+            <p>
+                The green square below is your <b>agent</b>. Each tile the agent can go to is a <b>state</b>. The agent can take <b>actions</b> 
+                that determine which state it goes to next. Try drawing a path and moving the agent around using the actions
+                 (up, down, left, right). You’ll see in the bottom left which state the agent is at.  
+            </p>
+            <p>If the agent reaches the goal (the purple square), then it gets 100 <b>reward</b>. Or in other words, 
+                goal states – states where the agent is at the goal –, have 100 reward. Every other state that isn’t at the goal has 0 reward.</p>
+          </div>
+
+          <div class="tutorial-step"> 
+                <h3>A Very Important Term: What is Value?</h3>
+            <p>
+                Every state has ZERO reward except for the ones that touch the goal!? How will the agent figure out where to go? Which next state 
+                is best for the agent to go to?
+            </p>
+            <p>This is where the notion of <b>value</b> comes in. Value is different than reward.
+                 Value takes into account the potential of a state – how well it can lead to future rewards, even if the state itself offers no reward. 
+                 <br>
+                <b>Experiment below:</b> see which states, despite having zero reward, have higher value. Do the states with higher value make sense? </p>
           </div>
           
           <div class="tutorial-step">
-            <h3>Try It Out!</h3>
-            <p>Before diving deeper into the algorithm, let's get familiar with the environment:</p>
-            <ul>
-              <li><b>Draw a path</b>: Use your mouse to draw white paths in the canvas below. Connect the green agent area to the purple goal area.</li>
-              <li><b>Observe the agent</b>: Notice the green square (agent) in the bottom-left and the purple goal area in the top-right.</li>
-              <li><b>Use manual controls</b>: Try the arrow buttons to manually move the agent around and see how its position changes.</li>
-              <li><b>Agent position</b>: Watch how the agent's coordinates update as you move it - each position represents a different state!</li>
-            </ul>
-            <p><em>This hands-on exploration will help you understand the concepts we just learned. Once you've experimented a bit, move on to Part 2 to see the value iteration algorithm in action!</em></p>
+            <h3>Putting it All Together</h3>
+            <p>
+                The point of this algorithm, Value Iteration, is to learn the value of each state. We are given the reward – but need to know which 
+                states have the best potential for leading to reward. That way, when the agent is thinking about which direction to go
+                 despite every future state all having zero reward, the agent can see which next state has the highest Value, and go there. 
+                By continuously going  to the next states that have the most value, 
+                the agent will keep taking optimal actions and manage to get the most amount of reward in the shortest amount of steps. 
+                The roadmap an agent uses to navigate the maze is called a <b>policy</b> and if we always know which next state is best to go to,
+                then we have an <b>optimal policy</b>.  
+            </p>
           </div>
         </div>
 
         <!-- Tutorial Part 2 -->
         <div id="tutorial-part-2" class="tutorial-part" style="display: none;">
           <div class="tutorial-step">
-            <h3><span data-highlight-part="2">Chaos to Order</span></h3>
-            <p>Value iteration starts by assigning either random values, or some constant value (like 0) to every state. 
-                At this point the value function is inaccurate. (<b>Line 1</b>). But ultimately, we will get an accurate value for each state.
-                 We'll do this by <i>iterating</i> through every single state in the state-space (<b>Line 2</b>). Then, for each state, we update its value to something that, 
-                 on average, is more accurate. 
-                 (See part 3 for how its updated). V(s) is the current value of a state, V'(s) denotes the next value of a state. 
-                Line <b>5</b> is saying that V'(s) is a result of what is happening on the right side of the arrow. 
-                Line <b>4</b> then says to update the value function to use the new values. We cannot update V(s) to V'(s) immediately when V'(s) is calculated because we still 
-            want the original V(s) to be used by other states in the loop.</p>
+            <h3>Time to get Technical</h3>
+            <p>We just learned about states, value, actions, and reward. Let’s look at some of the technical ways the pros talk about these things 😎</p>
+            <p><b>States:</b> The current state is often referred to simply as <b>s</b>, and the next state is <b>s'</b>.
+                 Every single possible state is referred to as the state-space, or <b>S</b> (yes the uppercase is important). Importantly, s and s’ are variables. 
+                 They’re used to talk about what to do at some specific state in general. 
+                 For example, you could say “for any s, take the action that brings you to the s’ with the highest value”. 
+            </p>
+            <p>
+                <b>Actions:</b> An action variable is <b>a</b>. The set of all actions that can be taken at some specific state is <b>A(s)></b>. 
+                Some states, don’t allow for some actions, like trying to go down while already at the bottom of the screen. 
+            </p>
+            <p>
+                <b>Reward:</b><i>Technically</i> what is meant by "state s has reward x", is actually saying that there is a reward function, <b>r</b>, and r(s) = x.  
+            </p>
+            <p>
+                <b>Value:</b>Similar to reward, value is also actually a function. We can refer to the value of a state as v(s), or a next state, v(s’). 
+                 Unlike the reward function, we aren't given the correct value function at the start. The whole point of Value Iteration 
+                 is to learn the correct value function when all we have is the reward function. 
+            </p>
+            <p>We can refer to the current value function as V, 
+                which is meant to refer to how there is a whole function that can take in any state and output a value. 
+                 So casually, the way this algorithm works is by starting out with a bad value function V, then some calculations and updates are made,
+                  and we then create a new value function, V’.  Then we make V’ the new V and update things again. 
+                We keep improving the value function until the improvements between V and V’ are so small that V can barely improve anymore.
+            </p>
+          </div>
+        
+          <div class="tutorial-step">
+            <h3><span data-highlight-part="2">Iteratively Improving the Value Function</span></h3>
+            <p>With our technical terms done we can start deciphering the algorithm on the right. First let’s understand the orange part. These lines are all about how we start with a bad value function V, get a better one V’, and then have V’ become V and start the process over again. </p>
+
+<p><b>Line 1:</b> We start with an inaccurate value function that’s randomly initialized, or just assigns a value to zero to each state.</p>
+
+<p><b>Lines 2 & 8:</b> Line 2 starts a loop, meaning that everything that happens beneath it keeps happening over and over again until the condition on line 8 is met. The specifics of line 8 and how the loop stops are in the next text blurb. But for now just know that everything in between lines 2 and 8 happen multiple times. We can also see that line 2 and 8 are on the same level of indentation. This is a means of signalling that line 8 is what has the power to stop the loop started on line 2. </p>
+
+<p><b>Line 4:</b> Line 4 starts another loop. What line 4 is saying is that we are going to go through every single state, and then use it to do stuff on lines 5 and 6 (because lines 5 and 6 are indented below line 4. So we have a loop started on line 2, and then another loop started on line 4. The reason for this is because for value iteration to work, we need to loop through every single state (as per line 4), and we are going to need to loop through every single state <i>multiple times</i> (as per line 2).</p>
+
+<p><b>Line 5:</b> So we’re going through each state (as per line 4). We have our current bad value function V that will give us the wrong value for whatever state we’re at, v(s). Line 5 is about how we go state by state and find a more accurate value for it – v’(s). (Once we’ve gotten v’(s) for every single state, we have a whole new value function V’, which we hope is superior to the current value function V). How v’(s) is calculated is in tutorial part 3. </p>
+
+<p><b>Line 7:</b> After getting better values for every individual state, we have a whole new value function, V’. Line 7 simply says to now let V’ be the current value function V, and then if the condition on line 8 isn’t met, we start looping through every single state yet again. </p>
           </div>
           
-          <div class="tutorial-step">
-            <h3><span data-highlight-part="2-alt">When do we Stop?</span></h3>
-            <p>The intuition for when we stop looping through all of the states and improving the value function is that we stop once any new improvements become very very small. That is where this symbol, Δ, comes into play. Δ is the difference between the new value function and the old value function. If Δ is small, then we stop, and value iteration is complete!</p>
-            <p>We start by setting Δ to zero (line X). It will not stay zero for long. We then start looping through all of the states and update their values by getting V'(s). At this point we can check what the absolute difference is between the new value, V'(s) is, and the old value, V(s) is. It's likely that this difference will be greater than 0. So when we get to line X, we update Δ to be whatever is higher, the current Δ or |V'(s) - V(s)|. So let's say that |V'(s) - V(s)| = 10, then Δ will now be 10, since the current Δ started at 0. Then on the next state, maybe |V'(s) - V(s)| = 20. When we then check what's higher, the current Δ or |V'(s) - V(s)|, 20 will be more than 10, therefore Δ will now equal 20. In this way, Δ ends up equalling the largest difference found for a state after looping through all of them.</p>
-            <p>After looping through each state, we check if Δ, the largest difference between any state's original value V(s) and its updated value, V(s') is less than or equal some small number denoted as θ. If it is, then we are done! Behind the scenes, this website uses 0.0001 as θ, meaning that once the difference between the new value function and the old value function is less than or equal to 0.0001, we assume that the value function is accurate. In playground mode, you can experiment using different values of θ.</p>
+
+
+
+
+        <div class="tutorial-step">
+            <h3><span data-highlight-part="2-alt">How we Stop</span></h3>
+            <p>Casually, the way we stop is by checking if the difference between V and V’ is small. Are any improvements to the value function barely any better, or even resulting in no new improvements at all? At that point, we stop and now have a good value function. So in order to do this, we need to track the difference between V and V’. We do so by tracking the largest difference that V gives for a state and V’ gives for a state. </p>
+
+            <p><b>Line 3:</b> Line 3 initializes a variable, delta, to be zero. This is the variable that’s going to track the biggest change between V and V’. </p>
+
+            <p><b>Line 6:</b> We just calculated a new value for some state, v(s’) on line 5. Line 6 is a way of keeping the delta to be the biggest (absolute) difference between v(s) and v(s’). This line might be easiest to understand by just carefully looking it over and thinking about it. </p>
+
+            <p><b>Line 8:</b> If delta is less than a small threshold value theta, we stop the whole thing.</p>
+
           </div>
         </div>
+
+        
+        
+        
 
         <!-- Tutorial Part 3 -->
         <div id="tutorial-part-3" class="tutorial-part" style="display: none;">
           <div class="tutorial-step">
-            <h3>Introducing the Reward Function</h3>
-            <p>It's time to look at that last part of the algorithm. The crucial part when we update the current value of a state, V(s), and hopefully make it into something more accurate, V'(s). First we have to introduce one more key term:</p>
-            <ul>
-              <li><b>Reward Function</b>: The reward function, r(s), takes in a state and outputs a reward. Crucially, <i>reward is different than value</i>. A reward function just tells you how immediately rewarding a current state is, but it does not take into account other states. So say you are at an amusement park and roller coaster A is very fun but has a super long line, while roller coaster B is kinda fun but has no line. Coaster A will have a higher reward than B, but the beginning of the line will have a higher <i>value</i> for coaster B than coaster A.
-            Currently, the reward function for this environment is that the goal has a reward of 10, and every other state has 0 reward.
-        <br>
-        <b>Challenge: In Playground mode, try changing the reward function to be "distance to goal", meaning that states closer to the goal have a higher reward. See if you can 
-            find the problem with using this reward function.
-        </b>
-    </li>
-              
-            </ul>
+            <h3>Let's Watch the Value Function Improve <i>Live</i></h3>
+            <p>We haven’t gone over exactly how the value function improves yet, but we do know that we iterate through each state and then make the value function better. To see the value function improve visually, draw a path and run the “live value iteration” function. You’ll then see the green box go to each state and update it from v(s) to v’(s). Run the algorithm multiple times and see how the delta gets smaller each iteration. </p>
+
+<p>As each state is iterated, the more green a state is the higher its value, the more red a state is the lower its value. It will also leave what the current “best” action at each state is. You’ll be able to see that as the value function improves, the “best” actions become more likely to actually be the true best action.</p>
+
           </div>
           
           <div class="tutorial-step">
@@ -1225,6 +1276,15 @@ body.playground-mode .non-playground-actions {
             <p>γ is the <b>discount rate</b>, and this determines how much the value of the next state should affect the current state. If it's 0, then that means we don't care about the value of the next state at all, therefore we only care about the reward. If it's 1 then that means we really care about the value of the next state. γ often equals 0.9, but in the background of this website, γ is actually set to 1, so it doesn't really matter that much. You can experiment more with γ in playground mode.</p>
             <p>To bring it all together, all the highlighted line is doing now is checking which action leads to the greatest r(s') + γV(s'), and then updates V(s) to be that maximum r(s') + γV(s').</p>
           </div> 
+
+          <div class="tutorial-step">
+            <h3>View Things Step-by-Step</h3>
+            <p>
+                You can now go step by step and see the whole picture of what’s going on in this algorithm at the closest level of detail. 
+                Press the step by step button and you’ll be able to see live how the right side of Line 5 is calculated. Keep clicking next to 
+                manually go through each state!
+            </p>
+          </div>    
         </div>
 
         <!-- Tutorial Part 4 -->
@@ -1241,7 +1301,7 @@ body.playground-mode .non-playground-actions {
           </div>
           
           <div class="tutorial-step">
-            <h3><span data-highlight-part="4">Except for One Tiny Part(s)</span></h3>
+            <h3><span data-highlight-part="4">Advanced Caveats</span></h3>
             <p>This whole time we've actually been looking at a slightly simplified version of value iteration. The blue parts are parts that were removed in steps 1-3.</p>
             <ul>
               <li><b>P(s'|s,a):</b> This part is relevant if actions operated probabilistically. Because this whole time we've been in a deterministic environment, it was irrelevant. But what this part means is "the probability of going to state s' given you're in state s and taking action a.</li>
@@ -1257,7 +1317,6 @@ body.playground-mode .non-playground-actions {
           </div>
         </div>
       </section>
-
       <!-- Algorithm Display (Right Side) -->
       <section class="algorithm-panel">
         <h3>Value Iteration Algorithm</h3>
@@ -1283,6 +1342,7 @@ body.playground-mode .non-playground-actions {
         </div>
       </section>
 
+    </div>
     </div>
   </div>
 
@@ -1377,6 +1437,16 @@ body.playground-mode .non-playground-actions {
         </div>
                     
         <!-- Introduction Tutorial Prompt -->
+        <div class="sidebar-section introduction-only">
+          <h3>Tips</h3>
+          <div class="button-row">
+            <ul><li>Click "reset agent" if the green square gets stuck in an inifinite loop.</li>
+            <li>
+                Click "reset all" to try a new path.
+            </li></ul>
+          </div>
+        </div>
+
         <div class="sidebar-section introduction-only">
           <h3>🎓 Learn More</h3>
           <div class="button-row">
@@ -1764,7 +1834,7 @@ body.playground-mode .non-playground-actions {
     function updateGlobalTutorialHeader(partNumber) {
       const titles = {
         1: "Tutorial Part 1: State, Actions, and the Value Function",
-        2: "Tutorial Part 2: Putting the Iteration in Value Iteration", 
+        2: "Tutorial Part 2: Putting the \"Iteration\" in Value Iteration", 
         3: "Tutorial Part 3: Step-by-Step Analysis",
         4: "Tutorial Part 4: Final Caveats"
       };
