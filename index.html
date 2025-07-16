@@ -1176,8 +1176,6 @@ body.playground-mode .non-playground-actions {
             </p>
             <p>This is where the notion of <b>value</b> comes in. Value is different than reward.
                  Value takes into account the potential of a state – how well it can lead to future rewards, even if the state itself offers no reward. 
-                 <br>
-                <b>Experiment below:</b> see which states, despite having zero reward, have higher value. Do the states with higher value make sense? </p>
           </div>
           
           <div class="tutorial-step">
@@ -1190,6 +1188,13 @@ body.playground-mode .non-playground-actions {
                 the agent will keep taking optimal actions and manage to get the most amount of reward in the shortest amount of steps. 
                 The roadmap an agent uses to navigate the maze is called a <b>policy</b> and if we always know which next state is best to go to,
                 then we have an <b>optimal policy</b>.  
+            </p>
+          </div>
+          <div class="tutorial-step">
+            <h3><b>Experiment Below</b></h3>
+            <p>
+                First run value iteration to get a value for each state. Then feel free to manually move the agent either using the button controls or your <b>arrow keys</b>. See how 
+                the value changes depending on where the agent moves to. Do the changes make sense?
             </p>
           </div>
         </div>
@@ -1209,10 +1214,10 @@ body.playground-mode .non-playground-actions {
                 Some states, don’t allow for some actions, like trying to go down while already at the bottom of the screen. 
             </p>
             <p>
-                <b>Reward:</b><i>Technically</i> what is meant by "state s has reward x", is actually saying that there is a reward function, <b>r</b>, and r(s) = x.  
+                <b>Reward: </b><i>Technically</i> what is meant by "state s has reward x", is actually saying that there is a reward function, <b>r</b>, and r(s) = x.  
             </p>
             <p>
-                <b>Value:</b>Similar to reward, value is also actually a function. We can refer to the value of a state as v(s), or a next state, v(s’). 
+                <b>Value: </b>Similar to reward, value is also actually a function. We can refer to the value of a state as v(s), or a next state, v(s’). 
                  Unlike the reward function, we aren't given the correct value function at the start. The whole point of Value Iteration 
                  is to learn the correct value function when all we have is the reward function. 
             </p>
@@ -1254,6 +1259,13 @@ body.playground-mode .non-playground-actions {
             <p><b>Line 8:</b> If delta is less than a small threshold value theta, we stop the whole thing.</p>
 
           </div>
+        <div class="tutorial-step">
+            <h3><b>See the Value Function Improve Live</b></h3>
+            <p>Click "Live Algorithm" after drawing a path and see the value of each state become more accurate!</p>
+            
+          </div>
+
+
         </div>
 
         
@@ -1278,7 +1290,7 @@ body.playground-mode .non-playground-actions {
           </div> 
 
           <div class="tutorial-step">
-            <h3>View Things Step-by-Step</h3>
+            <h3><b>View Things Step-by-Step</b></h3>
             <p>
                 You can now go step by step and see the whole picture of what’s going on in this algorithm at the closest level of detail. 
                 Press the step by step button and you’ll be able to see live how the right side of Line 5 is calculated. Keep clicking next to 
@@ -1336,9 +1348,9 @@ body.playground-mode .non-playground-actions {
           <div style="margin-bottom: 1.5rem;"><strong>8.</strong> <span data-highlight-part="2-alt"><strong>until</strong> Δ ≤ θ</span></div>
           
           <!-- Source Note -->
-          <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #4a5568; font-size: 11px; color: #a0aec0; text-align: center;">
+          <!-- <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #4a5568; font-size: 11px; color: #a0aec0; text-align: center;">
             <em>Source: insertlater.com</em>
-          </div>
+          </div> -->
         </div>
       </section>
 
@@ -1389,7 +1401,7 @@ body.playground-mode .non-playground-actions {
           <!-- Introduction Mode Actions -->
           <div class="introduction-only">
             <div class="button-row">
-              <button onclick="runValueIterationDemo()" class="btn-primary">✨ Run Algorithm</button>
+              <button onclick="runValueIterationDemo()" class="btn-primary">Solve the Maze!</button>
             </div>
             <div class="button-row">
               <button onclick="followOptimalPath()" id="follow-path-btn" class="btn-secondary" style="display: none;">🎯 Follow Path</button>
@@ -1402,12 +1414,9 @@ body.playground-mode .non-playground-actions {
           <!-- Tutorial Mode Actions -->
           <div class="tutorial-only">
             <div id="tutorial-part-1-controls" class="tutorial-controls-part">
-              <p style="font-size: 11px; color: #666; margin: 0 0 0.5rem 0; line-height: 1.3;">
-                <strong>Explore the Environment:</strong><br>
-                Draw paths and use manual controls to understand states and actions.
-              </p>
+              
               <div class="button-row">
-                <button onclick="runValueIterationClientSide()" class="btn-primary">Run Algorithm</button>
+                <button onclick="runValueIterationClientSide()" class="btn-primary">Run Value Iteration</button>
               </div>
               <div class="button-row">
                 <button onclick="followValuePolicy()" class="btn-accent">Follow Policy</button>
@@ -1415,13 +1424,16 @@ body.playground-mode .non-playground-actions {
             </div>
 
             <div id="tutorial-part-2-controls" class="tutorial-controls-part" style="display: none;">
-              <!-- Only Live Algorithm for Part 2 -->
-              <div style="margin-top: 0rem;">
+            <!-- Live Algorithm and Follow Policy for Part 2 -->
+            <div style="margin-top: 0rem;">
                 <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Live Mode</h4>
                 <div class="button-row">
-                  <button onclick="runTutorialLiveValueIteration()" class="btn-secondary">Live Algorithm</button>
+                <button onclick="runTutorialLiveValueIteration()" class="btn-secondary">Live Algorithm</button>
                 </div>
-              </div>
+                <div class="button-row">
+                <button onclick="followValuePolicy()" class="btn-accent">Follow Live Policy</button>
+                </div>
+            </div>
             </div>
 
             <div id="tutorial-part-3-controls" class="tutorial-controls-part" style="display: none;">
@@ -1530,8 +1542,8 @@ body.playground-mode .non-playground-actions {
 
           <!-- Reset Buttons -->
           <div class="canvas-reset-buttons">
-            <button onclick="resetGreenBox()" class="btn-mini btn-primary" title="Reset agent position">🔄 Agent</button>
-            <button onclick="resetEverything()" class="btn-mini btn-danger" title="Reset everything">🗑️ All</button>
+            <button onclick="resetGreenBox()" class="btn-mini btn-primary" title="Reset agent position">Reset Agent</button>
+            <button onclick="resetEverything()" class="btn-mini btn-danger" title="Reset everything">Reset All</button>
           </div>
         </div>
 
@@ -1551,9 +1563,15 @@ body.playground-mode .non-playground-actions {
           <div class="canvas-status-bar">
             <!-- Status Info -->
             <div class="status-info">
-              <div id="agentPositionCompact" class="agent-status-compact">
+            <div id="agentPositionCompact" class="agent-status-compact">
                 Agent: (60, 540)
-              </div>
+            </div>
+            <div id="currentRewardCompact" class="agent-status-compact">
+                Reward: 0
+            </div>
+            <div id="currentValueCompact" class="agent-status-compact">
+                Value: -
+            </div>
             </div>
 
             <div class="status-info">
@@ -1600,7 +1618,6 @@ body.playground-mode .non-playground-actions {
               <select id="rewardFunction" onchange="updateParameterDisplays()">
                 <option value="zero">Zero reward</option>
                 <option value="negative_distance">Negative distance</option>
-                <option value="positive_distance">Positive distance</option>
               </select>
             </div>
             <div class="input-group">
@@ -2040,6 +2057,107 @@ body.playground-mode .non-playground-actions {
         updateGlobalTutorialHeader(1);
       }
     });
+// Keyboard controls for agent movement
+document.addEventListener('keydown', function(event) {
+  // Only allow keyboard controls if not in step-by-step mode
+  if (window._isLiveRunning && (typeof stepByStepPaused !== 'undefined' && stepByStepPaused)) {
+    return; // Don't interfere with step-by-step mode
+  }
+  
+  // Prevent default behavior for arrow keys to avoid page scrolling
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+    event.preventDefault();
+  }
+  
+  // Map keys to actions
+  switch(event.code) {
+    case 'ArrowUp':
+    case 'KeyW':
+      manualMove(0); // Up
+      break;
+    case 'ArrowDown':
+    case 'KeyS':
+      manualMove(1); // Down
+      break;
+    case 'ArrowLeft':
+    case 'KeyA':
+      manualMove(2); // Left
+      break;
+    case 'ArrowRight':
+    case 'KeyD':
+      manualMove(3); // Right
+      break;
+  }
+});
+// Function to get current state reward
+function getCurrentStateReward(x, y) {
+  if (typeof getGoalCenter !== 'function') {
+    return 0;
+  }
+  
+  const goal = getGoalCenter();
+  const dist = Math.sqrt((x - goal.x) ** 2 + (y - goal.y) ** 2);
+  
+  if (dist < 21) { // At goal
+    return 10;
+  }
+  
+  // Get current reward function setting
+  const rewardFunction = document.getElementById('rewardFunction')?.value || 'zero';
+  
+  if (rewardFunction === 'negative_distance') {
+    // Negative distance to goal (normalized by box size)
+    return -(dist / 20);
+  } else {
+    // Zero reward (default)
+    return 0;
+  }
+}
+
+// Function to get current state value
+function getCurrentStateValue(x, y) {
+  const stateKey = `${x},${y}`;
+  
+  // Check if we have values from any algorithm
+  if (liveValues && liveValues.has(stateKey)) {
+    return liveValues.get(stateKey);
+  }
+  
+  // Check if at goal (fallback)
+  if (typeof getGoalCenter === 'function') {
+    const goal = getGoalCenter();
+    const dist = Math.sqrt((x - goal.x) ** 2 + (y - goal.y) ** 2);
+    if (dist < 21) {
+      return 10; // Goal value
+    }
+  }
+  
+  return "-"; // No value available
+}
+// Function to update the displays
+function updateCurrentStateDisplays(x, y) {
+  const rewardDisplay = document.getElementById('currentRewardCompact');
+  const valueDisplay = document.getElementById('currentValueCompact');
+  
+  if (rewardDisplay) {
+    const reward = getCurrentStateReward(x, y);
+    // Format reward display - show whole numbers for goal, decimals for negative distances
+    const formattedReward = reward === 10 || reward === 0 ? reward.toString() : reward.toFixed(2);
+    rewardDisplay.textContent = `Reward: ${formattedReward}`;
+  }
+  
+  if (valueDisplay) {
+    const value = getCurrentStateValue(x, y);
+    if (value === "-") {
+      valueDisplay.textContent = `Value: -`;
+    } else if (value === "VI") {
+      valueDisplay.textContent = `Value: VI run`;
+    } else {
+      const formattedValue = typeof value === 'number' ? value.toFixed(2) : value;
+      valueDisplay.textContent = `Value: ${formattedValue}`;
+    }
+  }
+}
   </script>
 </body>
 </html>

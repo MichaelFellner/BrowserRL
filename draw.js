@@ -330,6 +330,12 @@ document.addEventListener('DOMContentLoaded', function() {
   isTutorialMode = false;
   currentTutorialPart = 1;
   
+  // Initialize global variables
+  if (typeof liveValues === 'undefined') liveValues = new Map();
+  if (typeof yellowMap === 'undefined') yellowMap = new Map();
+  if (typeof liveDeltaMap === 'undefined') liveDeltaMap = new Map();
+  if (typeof liveMaxValueSeen === 'undefined') liveMaxValueSeen = 1;
+  
   // Set default canvas size to small
   resizeCanvas('small');
   
@@ -343,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
   updateDeltaDisplay(null);
 });
 
+// Tutorial-specific live value iteration function
 // Tutorial-specific live value iteration function
 async function runTutorialLiveValueIteration() {
   if (window._isLiveRunning) {
@@ -409,14 +416,22 @@ async function runTutorialLiveValueIteration() {
 
   const validSet = new Set(validStates.map(([x, y]) => `${x},${y}`));
 
-  if (!liveValues) {
+  // Initialize or reset all live iteration maps
+  if (!liveValues || liveValues === null) {
     liveValues = new Map();
+  }
+  if (!livePolicyMap || livePolicyMap === null) {
     livePolicyMap = new Map();
+  }
+  if (!liveArrowMap || liveArrowMap === null) {
     liveArrowMap = new Map();
+  }
+  if (typeof liveIterationCount === 'undefined' || liveIterationCount === null) {
     liveIterationCount = 0;
   }
 
   if (typeof liveDeltaMap === 'undefined') liveDeltaMap = new Map();
+  if (typeof liveMaxValueSeen === 'undefined') liveMaxValueSeen = 1;
 
   for (const [x, y] of validStates) {
     const key = `${x},${y}`;
@@ -432,7 +447,7 @@ async function runTutorialLiveValueIteration() {
       for (const [x, y] of validStates) {
         const stateKey = `${x},${y}`;
         if (stateKey === goalKey) {
-          liveValues.set(stateKey, 0);
+          liveValues.set(stateKey, 10); // Use consistent goal value
           continue;
         }
 
@@ -525,6 +540,12 @@ async function runTutorialLiveValueIteration() {
     }
   } finally {
     resetGreenBox();
+    
+    // Update current state displays after algorithm completes
+    const centerX = greenBox.left + BOX / 2;
+    const centerY = greenBox.top + BOX / 2;
+    updateCurrentStateDisplays(centerX, centerY);
+    
     window._isLiveRunning = false;
   }
 }
@@ -644,12 +665,35 @@ function getGoalCenter() {
 
 /** Check if the 20x20 area at (x,y) is entirely white (walkable) */
 async function isWhiteUnderBox(x, y) {
-  // Temporarily hide the green box AND red box to inspect underlying pixels
+  // Temporarily hide the green box, red box, AND heatmap rectangles to inspect underlying pixels
   greenBox.visible = false;
   redBox.visible = false;
+  
+  // Hide all heatmap rectangles added by live value iteration
+  const hiddenHeatRects = [];
+  if (typeof yellowMap !== 'undefined' && yellowMap) {
+    for (const [key, heatRect] of yellowMap.entries()) {
+      if (heatRect.visible !== false) {
+        heatRect.visible = false;
+        hiddenHeatRects.push(heatRect);
+      }
+    }
+  }
+  
+  // Hide all arrow/value text added by live value iteration
+  const hiddenArrows = [];
+  if (typeof liveArrowMap !== 'undefined' && liveArrowMap) {
+    for (const [key, arrow] of liveArrowMap.entries()) {
+      if (arrow.visible !== false) {
+        arrow.visible = false;
+        hiddenArrows.push(arrow);
+      }
+    }
+  }
+  
   canvas.requestRenderAll();
 
-  // Render canvas to an image and extract the region under the box
+  // Render the entire canvas to an image (PNG)
   const dataURL = canvas.toDataURL({ format: 'png' });
   const img = new Image();
   img.src = dataURL;
@@ -662,9 +706,20 @@ async function isWhiteUnderBox(x, y) {
   // Draw the image such that the top-left of the box area aligns at (0,0)
   ctx.drawImage(img, -x, -y);
 
-  // Restore green and red box visibility
+  // Restore green box, red box, and all hidden elements
   greenBox.visible = true;
   redBox.visible = true;
+  
+  // Restore heatmap rectangles
+  hiddenHeatRects.forEach(heatRect => {
+    heatRect.visible = true;
+  });
+  
+  // Restore arrows/value text
+  hiddenArrows.forEach(arrow => {
+    arrow.visible = true;
+  });
+  
   canvas.requestRenderAll();
 
   // Check the corner pixels of the 20x20 area for whiteness
@@ -739,6 +794,11 @@ function updateAgentPositionDisplay(x, y) {
   const tutorialDisplay = document.getElementById("tutorialAgentPosition");
   if (tutorialDisplay) {
     tutorialDisplay.textContent = `The agent is currently at state (${x}, ${y})`;
+  }
+  
+  // Update compact displays (reward and value)
+  if (typeof updateCurrentStateDisplays === 'function') {
+    updateCurrentStateDisplays(x, y);
   }
 }
 
@@ -925,8 +985,8 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
       const stateKey = `${x},${y}`;
       // If this state is the goal, treat it as terminal (no action needed)
       if (stateKey === goalKey) {
-        // Terminal state's value stays at 0 (no future reward beyond reaching goal)
-        newValues.set(stateKey, 0);
+        // Terminal state's value stays at 10 (goal reward)
+        newValues.set(stateKey, 10);
         // No policy action for goal
         continue;
       }
@@ -974,6 +1034,19 @@ function runValueIterationOnState(state, gamma = 0.99, threshold = 1e-8) {
     // Check for convergence
     if (delta < threshold) break;
   }
+  
+  // Store values in global liveValues map so UI can access them
+  if (!liveValues) {
+    liveValues = new Map();
+  } else {
+    liveValues.clear(); // Clear any previous values
+  }
+  
+  // Copy computed values to global map
+  for (const [key, val] of values.entries()) {
+    liveValues.set(key, val);
+  }
+  
   return {
     policy: Object.fromEntries(policyMap),
     iterations: iterationCount,
@@ -1005,9 +1078,11 @@ async function runValueIterationClientSide() {
   // Update delta display after convergence
   updateDeltaDisplay(result.finalDelta);
   
-  alert("✅ Value iteration done!");
   console.log("📌 Policy Keys:", Object.keys(valuePolicy));
   await checkPolicyPathLength();
+  const centerX = greenBox.left + BOX / 2;
+  const centerY = greenBox.top + BOX / 2;
+  updateCurrentStateDisplays(centerX, centerY);
 }
 
 function deltaToColor(value, max) {
@@ -1037,6 +1112,11 @@ function updateParameterDisplays() {
   const rewardFunction = document.getElementById("rewardFunction")?.value || 'zero';
   
   console.log(`📊 Parameters updated: γ=${gamma}, ε=${threshold}, reward=${rewardFunction}`);
+  
+  // Update current state displays when reward function changes
+  const centerX = greenBox.left + BOX / 2;
+  const centerY = greenBox.top + BOX / 2;
+  updateCurrentStateDisplays(centerX, centerY);
   
   // Update any running step-by-step displays
   if (window._isLiveRunning && stepByStepPaused) {
@@ -1104,6 +1184,7 @@ if (typeof yellowMap === 'undefined') yellowMap = new Map();
 if (typeof liveValueIterationState === 'undefined') liveValueIterationState = null;
 if (typeof deltaTextMap === 'undefined') deltaTextMap = new Map();
 if (typeof liveMaxValueSeen === 'undefined') liveMaxValueSeen = 1;
+if (typeof liveDeltaMap === 'undefined') liveDeltaMap = new Map();
 
 async function runLiveValueIteration() {
   if (window._isLiveRunning) {
@@ -1158,14 +1239,22 @@ async function runLiveValueIteration() {
 
   const validSet = new Set(validStates.map(([x, y]) => `${x},${y}`));
 
-  if (!liveValues) {
+  // Initialize or reset all live iteration maps
+  if (!liveValues || liveValues === null) {
     liveValues = new Map();
+  }
+  if (!livePolicyMap || livePolicyMap === null) {
     livePolicyMap = new Map();
+  }
+  if (!liveArrowMap || liveArrowMap === null) {
     liveArrowMap = new Map();
+  }
+  if (typeof liveIterationCount === 'undefined' || liveIterationCount === null) {
     liveIterationCount = 0;
   }
 
   if (typeof liveDeltaMap === 'undefined') liveDeltaMap = new Map();
+  if (typeof liveMaxValueSeen === 'undefined') liveMaxValueSeen = 1;
 
   for (const [x, y] of validStates) {
     const key = `${x},${y}`;
@@ -1181,7 +1270,7 @@ async function runLiveValueIteration() {
       for (const [x, y] of validStates) {
         const stateKey = `${x},${y}`;
         if (stateKey === goalKey) {
-          liveValues.set(stateKey, 0);
+          liveValues.set(stateKey, 10); // Use consistent goal value
           continue;
         }
 
@@ -1276,10 +1365,15 @@ async function runLiveValueIteration() {
     }
   } finally {
     resetGreenBox();
+    
+    // Update current state displays after algorithm completes
+    const centerX = greenBox.left + BOX / 2;
+    const centerY = greenBox.top + BOX / 2;
+    updateCurrentStateDisplays(centerX, centerY);
+    
     window._isLiveRunning = false;
   }
 }
-
 async function prepareLiveValueIteration() {
   const state = await parseCanvasToState();
   await runLiveValueIteration(state);
@@ -1302,15 +1396,18 @@ function resetEverything() {
 
   // Reset globals
   valuePolicy = {};
-  liveValues = null;
-  livePolicyMap = null;
-  liveArrowMap = null;
+  liveValues = new Map(); // Reset to empty map instead of null
+  livePolicyMap = new Map();
+  liveArrowMap = new Map();
   liveIterationCount = 0;
   
   // Clear maps
   if (typeof yellowMap !== 'undefined') yellowMap.clear();
   if (typeof arrowMap !== 'undefined') arrowMap.clear();
   if (typeof liveDeltaMap !== 'undefined') liveDeltaMap.clear();
+  
+  // Reset other globals
+  if (typeof liveMaxValueSeen !== 'undefined') liveMaxValueSeen = 1;
   
   // Reset displays
   iterationDisplay.innerText = "Iterations: -";
@@ -1360,6 +1457,9 @@ function resetEverything() {
   // Re-add to canvas
   canvas.add(bottomLeft, topRight, redBox, greenBox);
   canvas.renderAll();
+  
+  // Update displays with reset agent position
+  updateAgentPositionDisplay(greenStartX, greenStartY);
   
   console.log(`Reset everything for canvas ${W}x${H}, agent at (${greenStartX}, ${greenStartY})`);
 }
@@ -1525,14 +1625,22 @@ async function runLiveValueIteration_step_by_step() {
 
   const validSet = new Set(validStates.map(([x, y]) => `${x},${y}`));
 
-  if (!liveValues) {
+  // Initialize or reset all live iteration maps
+  if (!liveValues || liveValues === null) {
     liveValues = new Map();
+  }
+  if (!livePolicyMap || livePolicyMap === null) {
     livePolicyMap = new Map();
+  }
+  if (!liveArrowMap || liveArrowMap === null) {
     liveArrowMap = new Map();
+  }
+  if (typeof liveIterationCount === 'undefined' || liveIterationCount === null) {
     liveIterationCount = 0;
   }
 
   if (typeof liveDeltaMap === 'undefined') liveDeltaMap = new Map();
+  if (typeof liveMaxValueSeen === 'undefined') liveMaxValueSeen = 1;
 
   // Initialize values - use smaller starting values for step-by-step mode
   for (const [x, y] of validStates) {
@@ -1951,33 +2059,36 @@ document.querySelectorAll('.playground-only').forEach(el => {
 }
 
 // Demo Functions for Introduction Mode
-function runValueIterationDemo() {
+async function runValueIterationDemo() {
   const statusDiv = document.getElementById('intro-status');
   const statusText = document.getElementById('status-text');
   const followBtn = document.getElementById('follow-path-btn');
   
   // Show status
-  statusDiv.style.display = 'block';
-  statusText.textContent = 'Running value iteration...';
+//   statusDiv.style.display = 'block';
+//   statusText.textContent = 'Running value iteration...';
   
-  // Use your existing value iteration function
-  runValueIterationClientSide().then(() => {
-    statusText.textContent = 'Value iteration complete! Optimal policy computed.';
-    followBtn.style.display = 'inline-block';
-    hasRunValueIteration = true;
-  }).catch(() => {
-    // Fallback if your function doesn't return a promise
-    setTimeout(() => {
-      statusText.textContent = 'Value iteration complete! Optimal policy computed.';
-      followBtn.style.display = 'inline-block';
-      hasRunValueIteration = true;
-    }, 2000);
-  });
+//   // Use your existing value iteration function
+//   runValueIterationClientSide().then(() => {
+//     statusText.textContent = 'Value iteration complete! Optimal policy computed.';
+//     followBtn.style.display = 'inline-block';
+//     hasRunValueIteration = true;
+//   }).catch(() => {
+//     // Fallback if your function doesn't return a promise
+//     setTimeout(() => {
+//       statusText.textContent = 'Value iteration complete! Optimal policy computed.';
+//       followBtn.style.display = 'inline-block';
+//       hasRunValueIteration = true;
+//     }, 2000);
+//   });
+
+    
+    runValueIterationClientSide().then(() => followValuePolicy());
 }
 
 function followOptimalPath() {
   if (!hasRunValueIteration) {
-    alert('Please run value iteration first!');
+    //alert('Please run value iteration first!');
     return;
   }
   
