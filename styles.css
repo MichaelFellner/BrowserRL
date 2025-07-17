@@ -61,16 +61,382 @@ header p {
 }
 
 main {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 2rem auto;
   padding: 0 1rem;
 }
 
-.canvas-outer {
+/* Updated Main Layout - Ensure main layout doesn't shift when step-by-step status appears */
+.main-layout {
   display: flex;
-  gap: 2rem;
-  margin-bottom: 2rem;
+  justify-content: center;
   align-items: flex-start;
+  gap: 2rem;
+  padding: 2rem 1rem;
+  max-width: none;
+  margin: auto;
+  flex-wrap: wrap;
+}
+
+.canvas-and-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.actions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0;
+  position: relative;
+  flex-shrink: 0;
+  width: 280px;
+}
+
+.parameters-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 280px;
+  padding-top: 0;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Show playground panels side by side in main-layout */
+body.playground-mode .main-layout {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Ensure proper flex behavior for playground panels */
+body.playground-mode .actions-panel.playground-only {
+  flex: 0 0 280px;
+}
+
+body.playground-mode .parameters-panel.playground-only {
+  flex: 0 0 280px;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .main-layout {
+    flex-direction: column !important;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .actions-panel,
+  .parameters-panel,
+  .canvas-and-controls {
+    width: 100%;
+    max-width: 600px;
+    order: unset !important; /* Reset order on mobile */
+  }
+  
+  /* Responsive for playground mode */
+  body.playground-mode .actions-panel.playground-only,
+  body.playground-mode .parameters-panel.playground-only {
+    width: 100%;
+    max-width: 600px;
+    flex: none;
+  }
+}
+
+/* Introduction mode: actions on the RIGHT of canvas */
+/* Introduction and Tutorial modes: actions on the RIGHT of canvas */
+body:not(.playground-mode) .main-layout {
+  flex-direction: row;
+}
+
+body:not(.playground-mode) .canvas-and-controls {
+  order: 1; /* Canvas first (left) */
+}
+
+body:not(.playground-mode) .actions-panel {
+  order: 2; /* Actions second (right) */
+}
+
+/* Sidebar Styling (now used for actions panel) */
+.sidebar-section {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.sidebar-section:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.sidebar-section h3 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sidebar-section p {
+  margin: 0 0 0.5rem 0;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* Collapsible sections */
+.collapsible-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.collapsible-header {
+  padding: 0.75rem;
+  background: rgba(0,0,0,0.02);
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.3s ease;
+}
+
+.collapsible-header:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.collapsible-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.collapsible-toggle {
+  font-size: 0.8rem;
+  color: #666;
+  transition: transform 0.3s ease;
+}
+
+.collapsible-content {
+  padding: 0.75rem;
+  display: none;
+}
+
+.collapsible-content.expanded {
+  display: block;
+}
+
+.collapsible-toggle.expanded {
+  transform: rotate(180deg);
+}
+
+/* Canvas Section */
+.canvas-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.canvas-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 600px; /* Will be updated dynamically to match canvas */
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  transition: width 0.3s ease;
+}
+
+/* Canvas status bar wrapper to hold external buttons */
+.canvas-status-bar-wrapper {
+  display: flex;
+  align-items: stretch; /* Keep stretch so buttons match status bar height */
+  gap: 12px;
+  width: 600px; /* Will be updated dynamically to match canvas */
+  transition: width 0.3s ease;
+}
+
+/* Enhanced canvas status bar (now just the center part) */
+.canvas-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1; /* Take up remaining space in wrapper */
+  padding: 0.5rem; /* Back to original padding */
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+/* Step-by-Step Status Bar positioning */
+#stepByStepStatusBar {
+  margin-top: 0.5rem;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid #2196F3;
+}
+
+/* Step-by-Step Button Containers (now external) */
+#stepByStepStopContainer,
+#stepByStepNextContainer {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: auto; /* Let it calculate naturally */
+  min-height: 44px; /* Ensure minimum height matches status bar */
+}
+
+/* Ensure external buttons have proper styling and match status bar height */
+#stepByStepStopContainer .btn-mini,
+#stepByStepNextContainer .btn-mini {
+  white-space: nowrap;
+  min-width: 70px;
+  font-size: 11px;
+  padding: 12px 10px; /* Restore vertical padding to make buttons proper height */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px; /* Match status bar border radius */
+  min-height: 44px; /* Explicit height to match status bar */
+}
+
+/* Make the Next Step button purple like the step-by-step button */
+#stepByStepNextContainer .btn-mini.btn-primary {
+  background: linear-gradient(45deg, #9C27B0, #7B1FA2) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.3) !important;
+}
+
+#stepByStepNextContainer .btn-mini.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4) !important;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.agent-status-compact {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2e7d32;
+  background: #e8f5e9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #4CAF50;
+}
+
+.path-status-compact {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1976d2;
+  background: #e3f2fd;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #2196F3;
+}
+
+.iteration-status-compact {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7b1fa2;
+  background: #f3e5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #9c27b0;
+}
+
+.canvas-size-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.canvas-size-compact label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.canvas-size-compact select {
+  padding: 4px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 11px;
+  background: white;
+  cursor: pointer;
+}
+
+.canvas-reset-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-mini {
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 50px;
+}
+
+.btn-mini.btn-primary {
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  color: white;
+  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.3);
+}
+
+.btn-mini.btn-danger {
+  background: linear-gradient(45deg, #f44336, #d32f2f);
+  color: white;
+  box-shadow: 0 1px 4px rgba(244, 67, 54, 0.3);
+}
+
+.btn-mini:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .canvas-container {
@@ -82,105 +448,140 @@ main {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
 }
 
 .canvas-container canvas {
   display: block;
 }
 
-.heatmap-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.heatmap-btn {
-  padding: 12px 20px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.heatmap-btn:hover {
-  background: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-#heatmap-legend {
-  background: white;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  text-align: center;
-  min-width: 150px;
-}
-
-.legend-title {
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-  color: #333;
-}
-
-.heatbar {
-  height: 100px;
-  width: 20px;
-  background: linear-gradient(to top, #ff0000 0%, #ffff00 50%, #00ff00 100%);
-  margin: 0.5rem auto;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-}
-
-.controls-panel {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-}
-
-.section {
-  background: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.section h2 {
-  margin: 0 0 1rem 0;
-  color: #495057;
-  font-size: 1.3rem;
-  font-weight: 600;
-}
-
+/* Button Styles */
 .button-row {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
   flex-wrap: wrap;
 }
 
-button {
-  padding: 10px 16px;
-  background: #007bff;
-  color: white;
+.btn-primary, .btn-secondary, .btn-accent, .btn-danger, .btn-tutorial {
   border: none;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
   transition: all 0.3s ease;
+  flex: 1;
+  min-width: 80px;
+  text-align: center;
 }
 
-button:hover {
-  background: #0056b3;
+.btn-primary {
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  color: white;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-primary:hover {
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(45deg, #2196F3, #1976D2);
+  color: white;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+}
+
+.btn-accent {
+  background: linear-gradient(45deg, #FF9800, #F57C00);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.btn-accent:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+}
+
+.btn-danger {
+  background: linear-gradient(45deg, #f44336, #d32f2f);
+  color: white;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+.btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+.btn-tutorial {
+  background: linear-gradient(45deg, #9C27B0, #7B1FA2);
+  color: white;
+  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.3);
+}
+
+.btn-tutorial:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
+}
+
+/* Compact button for single actions */
+.btn-compact {
+  padding: 6px 10px;
+  font-size: 11px;
+  min-width: 60px;
+}
+
+/* Input groups for better form organization */
+.input-group {
+  margin-bottom: 0.75rem;
+}
+
+.input-group label {
+  margin-bottom: 0.25rem;
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Playground Section Styles */
+.playground-section {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.playground-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 0.5rem;
+}
+
+.playground-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playground-params {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 label {
@@ -197,6 +598,7 @@ input {
   border-radius: 4px;
   margin-top: 4px;
   font-size: 14px;
+  box-sizing: border-box;
 }
 
 input:focus {
@@ -205,34 +607,128 @@ input:focus {
   box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
 }
 
+/* D-Pad Grid */
 .dpad-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
-  max-width: 120px;
-  margin-top: 1rem;
+  max-width: 150px;
+  margin: 1rem auto 0 auto;
 }
 
 .dpad-grid button {
-  padding: 8px;
+  padding: 12px;
   font-size: 16px;
-  min-height: 36px;
+  min-height: 44px;
+  border-radius: 6px;
+  background: #4CAF50;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.tutorial-step {
-  background: #e3f2fd;
-  border: 2px solid #2196f3;
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-bottom: 1rem;
+.dpad-grid button:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+}
+
+.dpad-grid div:nth-child(5) {
+  background: #e0e0e0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Status Display */
+.status-display {
+  background: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.agent-position {
+  font-weight: bold;
+  color: #2e7d32;
   font-size: 16px;
+  padding: 1rem;
+  background: #e8f5e9;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid #4CAF50;
+}
+
+/* Size Selector */
+.size-selector {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.size-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.size-option:hover {
+  background: #f8f9fa;
+  border-color: #007bff;
+}
+
+.size-option input[type="radio"] {
+  width: auto;
+  margin: 0;
+}
+
+.size-option input[type="radio"]:checked + span {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.size-option:has(input[type="radio"]:checked) {
+  border-color: #007bff;
+  background: #e3f2fd;
+}
+
+/* Tutorial Styles */
+.tutorial-step {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 15px;
   line-height: 1.6;
 }
 
 .tutorial-step h3 {
-  color: #1976d2;
-  margin: 0 0 1rem 0;
-  font-size: 1.4rem;
+  color: #2c3e50;
+  margin: 0 0 0.75rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.tutorial-step p {
+  margin-bottom: 1rem;
+}
+
+.tutorial-step:last-child {
+  margin-bottom: 0;
 }
 
 .tutorial-only {
@@ -276,23 +772,97 @@ input:focus {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-.playground-only.hidden {
-  display: none !important;
+/* Tutorial Layout */
+.tutorial-container-wrapper {
+  max-width: 1400px;
+  margin: 2rem auto 0 auto;
 }
 
-.playground-only.show {
-  display: block !important;
+.tutorial-global-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.tutorial-only.show {
-  display: block !important;
+.tutorial-global-header h2 {
+  color: #2c3e50;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.8rem;
+  font-weight: 600;
 }
 
-/* Enhanced Tutorial Highlighting System with Multiple Colors */
+.tutorial-container {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  min-height: 600px;
+}
 
-/* Part 1 highlighting - Blue theme */
+.tutorial-content-panel {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  max-width: calc(100% - 600px); /* Updated for 550px algorithm panel + gap */
+}
+
+.tutorial-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tutorial-header h2 {
+  color: #2c3e50;
+  margin: 0 0 1rem 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.algorithm-panel {
+  flex: 0 0 550px; /* Increased to 550px (50px wider) */
+  background: #2c3e50;
+  color: #ecf0f1;
+  padding: 1.5rem;
+  border-radius: 12px;
+  font-family: 'Courier New', monospace;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  height: fit-content;
+  position: sticky;
+  top: 2rem;
+  min-height: 400px;
+}
+
+.algorithm-panel h3 {
+  color: #3498db;
+  text-align: center;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.algorithm-content {
+  background: #34495e;
+  padding: 1.5rem;
+  border-radius: 8px;
+  line-height: 1.8;
+  font-size: 13px;
+}
+
+/* Enhanced Tutorial Highlighting System */
 .part-1-highlight-active {
   background: #3498db !important;
   color: #ffffff !important;
@@ -302,16 +872,6 @@ input:focus {
   box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
 }
 
-.part-1-alt-highlight-active {
-  background: #85c1e9 !important;
-  color: #1b4f72 !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 8px rgba(133, 193, 233, 0.6);
-}
-
-/* Part 2 highlighting - Orange/Yellow theme */
 .part-2-highlight-active {
   background: #f39c12 !important;
   color: #2c3e50 !important;
@@ -330,7 +890,6 @@ input:focus {
   box-shadow: 0 0 8px rgba(241, 196, 15, 0.6);
 }
 
-/* Part 3 highlighting - Purple/Pink theme */
 .part-3-highlight-active {
   background: #9b59b6 !important;
   color: #ffffff !important;
@@ -340,59 +899,6 @@ input:focus {
   box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
 }
 
-.part-3-alt-highlight-active {
-  background: #e91e63 !important;
-  color: #ffffff !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 8px rgba(233, 30, 99, 0.6);
-}
-
-/* Additional color options for each part */
-
-/* Part 1 - More blue variants */
-.part-1-tertiary-highlight-active {
-  background: #5dade2 !important;
-  color: #154360 !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 6px rgba(93, 173, 226, 0.5);
-}
-
-/* Part 2 - More orange/warm variants */
-.part-2-tertiary-highlight-active {
-  background: #e67e22 !important;
-  color: #ffffff !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 6px rgba(230, 126, 34, 0.5);
-}
-
-/* Part 3 - More purple/cool variants */
-.part-3-tertiary-highlight-active {
-  background: #8e44ad !important;
-  color: #ffffff !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 6px rgba(142, 68, 173, 0.5);
-}
-
-/* Legacy algorithm highlighting for backwards compatibility */
-.algorithm-highlight {
-  background: #f39c12 !important;
-  color: #2c3e50 !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
-}
-
-/* Part 4 highlighting - Green theme for "Final Caveats" */
-/* Part 4 highlighting - Turquoise/Cyan theme for mathematical completeness */
 .part-4-highlight-active {
   background: #17a2b8 !important;
   color: #ffffff !important;
@@ -400,41 +906,6 @@ input:focus {
   border-radius: 4px;
   transition: all 0.3s ease;
   box-shadow: 0 0 10px rgba(23, 162, 184, 0.5);
-}
-
-.part-4-alt-highlight-active {
-  background: #20c997 !important;
-  color: #155724 !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 8px rgba(32, 201, 151, 0.6);
-}
-
-.part-4-tertiary-highlight-active {
-  background: #6ec6ff !important;
-  color: #0d47a1 !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 6px rgba(110, 198, 255, 0.5);
-}
-
-/* Special styling for Part 4 since it has no canvas/controls */
-#tutorial-part-4 {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-#tutorial-part-4 .tutorial-step {
-  margin-bottom: 2rem;
-}
-
-#tutorial-part-4 h4 {
-  color: #2c3e50;
-  margin: 1.5rem 0 0.5rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
 }
 
 /* Mathematical term visibility control */
@@ -446,7 +917,6 @@ input:focus {
   display: inline;
 }
 
-/* Show complete math in part 4 and playground mode */
 body.tutorial-part-4 .math-complete-only,
 body.playground-mode .math-complete-only {
   display: inline;
@@ -457,7 +927,6 @@ body.playground-mode .math-simple-only {
   display: none;
 }
 
-/* Tutorial parts 1-3 show simplified math (default behavior above) */
 /* Introduction Mode Styles */
 .introduction-section {
   text-align: center;
@@ -488,157 +957,138 @@ body.playground-mode .math-simple-only {
   margin-bottom: 1.5rem;
 }
 
-.introduction-canvas {
-  display: flex;
-  justify-content: center;
-  margin: 2rem 0;
-}
-
-.introduction-controls {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-  max-width: 600px;
-  margin: 2rem auto;
-  text-align: center;
-}
-
-.introduction-controls h3 {
-  color: #2c3e50;
-  margin: 0 0 1rem 0;
-  font-size: 1.4rem;
-}
-
-.introduction-controls p {
-  color: #666;
-  margin-bottom: 2rem;
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.intro-button-group {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
-}
-
-.intro-primary-btn {
-  background: linear-gradient(45deg, #4CAF50, #45a049);
-  color: white;
-  border: none;
-  padding: 15px 30px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-}
-
-.intro-primary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
-}
-
-.intro-secondary-btn {
-  background: linear-gradient(45deg, #2196F3, #1976D2);
-  color: white;
-  border: none;
-  padding: 15px 30px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
-}
-
-.intro-secondary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
-}
-
-.next-steps {
-  border-top: 2px solid #e9ecef;
-  padding-top: 2rem;
-  margin-top: 2rem;
-}
-
-.next-steps h4 {
-  color: #2c3e50;
-  margin: 0 0 1rem 0;
-  font-size: 1.2rem;
-}
-
-.tutorial-start-btn {
-  background: linear-gradient(45deg, #9C27B0, #7B1FA2);
-  color: white;
-  border: none;
-  padding: 18px 36px;
-  font-size: 18px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
-}
-
-.tutorial-start-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(156, 39, 176, 0.4);
-}
-
-.intro-status {
-  background: #e8f5e9;
-  border: 1px solid #c8e6c9;
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem 0;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-}
-
-/* Mode visibility classes - update your existing ones or add these */
+/* Mode visibility classes */
 .introduction-only { display: block; }
+.tutorial-only { display: none; }
+.playground-only { display: none; }
 
+/* Introduction mode - show both introduction-only and tutorial-only elements */
+body:not(.tutorial-mode):not(.playground-mode) .introduction-only { display: block; }
+body:not(.tutorial-mode):not(.playground-mode) .tutorial-only { display: block; }
+
+/* Tutorial mode */
 body.tutorial-mode .introduction-only { display: none; }
+body.tutorial-mode .tutorial-only { display: block; }
+body.tutorial-mode .playground-only { display: none; }
+
+/* Playground mode */
 body.playground-mode .introduction-only { display: none; }
-/* Add this rule to hide tutorial-only elements in introduction mode */
-body:not(.tutorial-mode):not(.playground-mode) .tutorial-only { 
-  display: none !important; 
-}   
+body.playground-mode .tutorial-only { display: none; }
+body.playground-mode .playground-only { display: block; }
 
-.size-selector {
+/* Tutorial part-specific visibility */
+.tutorial-part-1-only { display: none; }
+.tutorial-part-2-plus { display: none; }
+.tutorial-part-3-plus { display: none; }
+.tutorial-part-2-only { display: none; }
+
+body.tutorial-part-1 .tutorial-part-1-only { display: block; }
+body.tutorial-part-2 .tutorial-part-2-plus,
+body.tutorial-part-3 .tutorial-part-2-plus,
+body.tutorial-part-4 .tutorial-part-2-plus { display: block; }
+body.tutorial-part-3 .tutorial-part-3-plus,
+body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
+body.tutorial-part-2 .tutorial-part-2-only { display: block; }
+
+/* Explicitly hide tutorial settings in parts 1, 3, and 4 */
+body.tutorial-part-1 .tutorial-part-2-only,
+body.tutorial-part-3 .tutorial-part-2-only,
+body.tutorial-part-4 .tutorial-part-2-only {
+  display: none !important;
+}
+
+/* Hide canvas and controls for tutorial part 4 */
+body.tutorial-part-4 .main-layout {
+  display: none !important;
+}
+
+/* Manual controls visibility - only part 1 */
+body.tutorial-part-2 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-3 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-4 .collapsible-section.tutorial-only.playground-only {
+  display: none !important;
+}
+
+/* Force manual controls to be visible in tutorial part 1 only */
+body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only {
+  display: block !important;
+  visibility: visible !important;
+}
+
+body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only .collapsible-content {
+  display: block !important;
+}
+
+body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only .collapsible-toggle {
+  transform: rotate(180deg);
+}
+
+/* Manual controls hidden in parts 2, 3, and 4 */
+body.tutorial-part-2 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-3 .collapsible-section.tutorial-only.playground-only,
+body.tutorial-part-4 .collapsible-section.tutorial-only.playground-only {
+  display: none !important;
+}
+
+/* Responsive Tutorial Layout */
+@media (max-width: 1200px) {
+  .tutorial-container-wrapper {
+    max-width: 100% !important;
+    margin: 1rem !important;
+  }
+  
+  .tutorial-global-header {
+    margin-bottom: 1rem !important;
+    padding: 1.5rem !important;
+  }
+  
+  .tutorial-global-header h2 {
+    font-size: 1.4rem !important;
+  }
+  
+  .tutorial-container {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+    max-width: 100% !important;
+  }
+  
+  .tutorial-content-panel {
+    max-width: 100% !important;
+  }
+  
+  .algorithm-panel {
+    flex: none !important;
+    position: relative !important;
+    top: auto !important;
+    order: -1; /* Show algorithm first on mobile */
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Force horizontal layout on larger screens */
+@media (min-width: 1201px) {
+  .tutorial-container {
+    display: flex !important;
+    flex-direction: row !important;
+  }
+  
+  .tutorial-content-panel {
+    flex: 1 !important;
+    max-width: calc(100% - 600px) !important; /* Updated for 550px algorithm panel + gap */
+  }
+  
+  .algorithm-panel {
+    flex: 0 0 550px !important; /* Updated to 550px */
+    position: sticky !important;
+    top: 2rem !important;
+  }
+}
+/* Actions panel for both introduction and tutorial modes */
+.non-playground-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
-.size-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.size-option:hover {
-  background: #f8f9fa;
-  border-color: #007bff;
-}
-
-.size-option input[type="radio"] {
-  width: auto;
-  margin: 0;
-}
-
-.size-option input[type="radio"]:checked + span {
-  font-weight: bold;
-  color: #007bff;
+body.playground-mode .non-playground-actions {
+  display: none;
 }

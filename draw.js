@@ -366,15 +366,15 @@ async function runTutorialLiveValueIteration() {
   
   if (currentTutorialPart === 2) {
     // Part 2 uses its own controls
-    delayMs = parseInt(document.getElementById("tutorialDelayMs").value) || 200;
+    delayMs = parseInt(document.getElementById("tutorialDelayMs").value) || 50;
     totalIterations = parseInt(document.getElementById("tutorialLiveIters").value) || 1;
   } else if (currentTutorialPart === 3) {
     // Part 3 uses its own controls
-    delayMs = parseInt(document.getElementById("tutorialLiveDelayMs").value) || 200;
+    delayMs = parseInt(document.getElementById("tutorialLiveDelayMs").value) || 50;
     totalIterations = parseInt(document.getElementById("tutorialLiveIters").value) || 1;
   } else {
     // Default values
-    delayMs = 200;
+    delayMs = 50;
     totalIterations = 1;
   }
 
@@ -1573,7 +1573,7 @@ async function runLiveValueIteration_step_by_step() {
   if (isTutorialMode) {
     gamma = 0.99;
     threshold = 1e-4;
-    delayMs = 100; // Faster for tutorial to avoid waiting
+    delayMs = 50; // Faster for tutorial to avoid waiting
     totalIterations = 1;
   } else {
     // Playground mode - use the input fields

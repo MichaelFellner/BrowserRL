@@ -4,1102 +4,30 @@
   <meta charset="UTF-8">
   <title>Learn Value Iteration!</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
   <style>
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  margin: 0;
-  padding: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #333;
-  min-height: 100vh;
-}
-
-header {
-  text-align: center;
-  padding: 2rem 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-header h1 {
-  color: white;
-  margin: 0 0 0.5rem 0;
-  font-size: 2.5rem;
-  font-weight: 300;
-}
-
-header p {
-  color: #e3f2fd;
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.mode-toggle {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.mode-btn {
-  padding: 10px 20px;
-  border: 2px solid white;
-  background: transparent;
-  color: white;
-  border-radius: 25px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.mode-btn.active {
-  background: white;
-  color: #667eea;
-}
-
-.mode-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.mode-btn.active:hover {
-  background: white;
-}
-
-main {
-  max-width: 1600px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-}
-
-/* Updated Main Layout - Ensure main layout doesn't shift when step-by-step status appears */
-.main-layout {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 2rem;
-  padding: 2rem 1rem;
-  max-width: none;
-  margin: auto;
-  flex-wrap: wrap;
-}
-
-.canvas-and-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.actions-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 0;
-  position: relative;
-  flex-shrink: 0;
-  width: 280px;
-}
-
-.parameters-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  width: 280px;
-  padding-top: 0;
-  position: relative;
-  flex-shrink: 0;
-}
-
-/* Show playground panels side by side in main-layout */
-body.playground-mode .main-layout {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-/* Ensure proper flex behavior for playground panels */
-body.playground-mode .actions-panel.playground-only {
-  flex: 0 0 280px;
-}
-
-body.playground-mode .parameters-panel.playground-only {
-  flex: 0 0 280px;
-}
-
-/* Responsive Design */
-@media (max-width: 1200px) {
-  .main-layout {
-    flex-direction: column !important;
-    align-items: center;
-    gap: 2rem;
-  }
-
-  .actions-panel,
-  .parameters-panel,
-  .canvas-and-controls {
-    width: 100%;
-    max-width: 600px;
-    order: unset !important; /* Reset order on mobile */
-  }
-  
-  /* Responsive for playground mode */
-  body.playground-mode .actions-panel.playground-only,
-  body.playground-mode .parameters-panel.playground-only {
-    width: 100%;
-    max-width: 600px;
-    flex: none;
-  }
-}
-
-/* Introduction mode: actions on the RIGHT of canvas */
-/* Introduction and Tutorial modes: actions on the RIGHT of canvas */
-body:not(.playground-mode) .main-layout {
-  flex-direction: row;
-}
-
-body:not(.playground-mode) .canvas-and-controls {
-  order: 1; /* Canvas first (left) */
-}
-
-body:not(.playground-mode) .actions-panel {
-  order: 2; /* Actions second (right) */
-}
-
-/* Sidebar Styling (now used for actions panel) */
-.sidebar-section {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.75rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
-}
-
-.sidebar-section:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.sidebar-section h3 {
-  margin: 0 0 0.5rem 0;
-  color: #2c3e50;
-  font-size: 0.9rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.sidebar-section p {
-  margin: 0 0 0.5rem 0;
-  color: #666;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-/* Collapsible sections */
-.collapsible-section {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.collapsible-header {
-  padding: 0.75rem;
-  background: rgba(0,0,0,0.02);
-  border-bottom: 1px solid rgba(0,0,0,0.1);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transition: all 0.3s ease;
-}
-
-.collapsible-header:hover {
-  background: rgba(0,0,0,0.05);
-}
-
-.collapsible-header h3 {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #2c3e50;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.collapsible-toggle {
-  font-size: 0.8rem;
-  color: #666;
-  transition: transform 0.3s ease;
-}
-
-.collapsible-content {
-  padding: 0.75rem;
-  display: none;
-}
-
-.collapsible-content.expanded {
-  display: block;
-}
-
-.collapsible-toggle.expanded {
-  transform: rotate(180deg);
-}
-
-/* Canvas Section */
-.canvas-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.canvas-controls-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 600px; /* Will be updated dynamically to match canvas */
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  backdrop-filter: blur(10px);
-  transition: width 0.3s ease;
-}
-
-/* Canvas status bar wrapper to hold external buttons */
-.canvas-status-bar-wrapper {
-  display: flex;
-  align-items: stretch; /* Keep stretch so buttons match status bar height */
-  gap: 12px;
-  width: 600px; /* Will be updated dynamically to match canvas */
-  transition: width 0.3s ease;
-}
-
-/* Enhanced canvas status bar (now just the center part) */
-.canvas-status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex: 1; /* Take up remaining space in wrapper */
-  padding: 0.5rem; /* Back to original padding */
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  backdrop-filter: blur(10px);
-  position: relative;
-}
-
-/* Step-by-Step Status Bar positioning */
-#stepByStepStatusBar {
-  margin-top: 0.5rem;
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  backdrop-filter: blur(10px);
-  border: 2px solid #2196F3;
-}
-
-/* Step-by-Step Button Containers (now external) */
-#stepByStepStopContainer,
-#stepByStepNextContainer {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  height: auto; /* Let it calculate naturally */
-  min-height: 44px; /* Ensure minimum height matches status bar */
-}
-
-/* Ensure external buttons have proper styling and match status bar height */
-#stepByStepStopContainer .btn-mini,
-#stepByStepNextContainer .btn-mini {
-  white-space: nowrap;
-  min-width: 70px;
-  font-size: 11px;
-  padding: 12px 10px; /* Restore vertical padding to make buttons proper height */
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px; /* Match status bar border radius */
-  min-height: 44px; /* Explicit height to match status bar */
-}
-
-/* Make the Next Step button purple like the step-by-step button */
-#stepByStepNextContainer .btn-mini.btn-primary {
-  background: linear-gradient(45deg, #9C27B0, #7B1FA2) !important;
-  color: white !important;
-  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.3) !important;
-}
-
-#stepByStepNextContainer .btn-mini.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4) !important;
-}
-
-.status-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.agent-status-compact {
-  font-size: 11px;
-  font-weight: 600;
-  color: #2e7d32;
-  background: #e8f5e9;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #4CAF50;
-}
-
-.path-status-compact {
-  font-size: 11px;
-  font-weight: 600;
-  color: #1976d2;
-  background: #e3f2fd;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #2196F3;
-}
-
-.iteration-status-compact {
-  font-size: 11px;
-  font-weight: 600;
-  color: #7b1fa2;
-  background: #f3e5f5;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #9c27b0;
-}
-
-.canvas-size-compact {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.canvas-size-compact label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin: 0;
-}
-
-.canvas-size-compact select {
-  padding: 4px 8px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 11px;
-  background: white;
-  cursor: pointer;
-}
-
-.canvas-reset-buttons {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.btn-mini {
-  padding: 4px 8px;
-  font-size: 10px;
-  font-weight: 600;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 50px;
-}
-
-.btn-mini.btn-primary {
-  background: linear-gradient(45deg, #4CAF50, #45a049);
-  color: white;
-  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.3);
-}
-
-.btn-mini.btn-danger {
-  background: linear-gradient(45deg, #f44336, #d32f2f);
-  color: white;
-  box-shadow: 0 1px 4px rgba(244, 67, 54, 0.3);
-}
-
-.btn-mini:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.canvas-container {
-  border: 3px solid #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-  background: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-}
-
-.canvas-container canvas {
-  display: block;
-}
-
-/* Button Styles */
-.button-row {
-  display: flex;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.btn-primary, .btn-secondary, .btn-accent, .btn-danger, .btn-tutorial {
-  border: none;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex: 1;
-  min-width: 80px;
-  text-align: center;
-}
-
-.btn-primary {
-  background: linear-gradient(45deg, #4CAF50, #45a049);
-  color: white;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-}
-
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-}
-
-.btn-secondary {
-  background: linear-gradient(45deg, #2196F3, #1976D2);
-  color: white;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-}
-
-.btn-secondary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
-}
-
-.btn-accent {
-  background: linear-gradient(45deg, #FF9800, #F57C00);
-  color: white;
-  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
-}
-
-.btn-accent:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
-}
-
-.btn-danger {
-  background: linear-gradient(45deg, #f44336, #d32f2f);
-  color: white;
-  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
-}
-
-.btn-danger:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
-}
-
-.btn-tutorial {
-  background: linear-gradient(45deg, #9C27B0, #7B1FA2);
-  color: white;
-  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.3);
-}
-
-.btn-tutorial:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
-}
-
-/* Compact button for single actions */
-.btn-compact {
-  padding: 6px 10px;
-  font-size: 11px;
-  min-width: 60px;
-}
-
-/* Input groups for better form organization */
-.input-group {
-  margin-bottom: 0.75rem;
-}
-
-.input-group label {
-  margin-bottom: 0.25rem;
-  font-size: 12px;
-  font-weight: 600;
-  color: #495057;
-}
-
-/* Playground Section Styles */
-.playground-section {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.75rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.playground-section h4 {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #2c3e50;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 0.5rem;
-}
-
-.playground-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.playground-params {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.8rem;
-  font-weight: 500;
-  color: #495057;
-}
-
-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  margin-top: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-input:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
-}
-
-/* D-Pad Grid */
-.dpad-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  max-width: 150px;
-  margin: 1rem auto 0 auto;
-}
-
-.dpad-grid button {
-  padding: 12px;
-  font-size: 16px;
-  min-height: 44px;
-  border-radius: 6px;
-  background: #4CAF50;
-  border: none;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.dpad-grid button:hover {
-  background: #45a049;
-  transform: translateY(-1px);
-}
-
-.dpad-grid div:nth-child(5) {
-  background: #e0e0e0;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: #666;
-}
-
-/* Status Display */
-.status-display {
-  background: #e8f5e9;
-  border: 1px solid #c8e6c9;
-  border-radius: 8px;
-  padding: 1rem;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.agent-position {
-  font-weight: bold;
-  color: #2e7d32;
-  font-size: 16px;
-  padding: 1rem;
-  background: #e8f5e9;
-  border-radius: 8px;
-  text-align: center;
-  border: 2px solid #4CAF50;
-}
-
-/* Size Selector */
-.size-selector {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.size-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: white;
-}
-
-.size-option:hover {
-  background: #f8f9fa;
-  border-color: #007bff;
-}
-
-.size-option input[type="radio"] {
-  width: auto;
-  margin: 0;
-}
-
-.size-option input[type="radio"]:checked + span {
-  font-weight: bold;
-  color: #007bff;
-}
-
-.size-option:has(input[type="radio"]:checked) {
-  border-color: #007bff;
-  background: #e3f2fd;
-}
-
-/* Tutorial Styles */
-.tutorial-step {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  padding: 1.25rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-.tutorial-step h3 {
-  color: #2c3e50;
-  margin: 0 0 0.75rem 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.tutorial-step p {
-  margin-bottom: 1rem;
-}
-
-.tutorial-step:last-child {
-  margin-bottom: 0;
-}
-
-.tutorial-only {
-  display: block;
-}
-
-.playground-only {
-  display: none;
-}
-
-.tutorial-nav-btn {
-  padding: 8px 16px;
-  margin: 0 5px;
-  background: #f0f0f0;
-  border: 2px solid #ddd;
-  color: #666;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.tutorial-nav-btn.active {
-  background: #2196F3;
-  border-color: #2196F3;
-  color: white;
-}
-
-.tutorial-nav-btn:hover {
-  background: #e0e0e0;
-  border-color: #bbb;
-}
-
-.tutorial-nav-btn.active:hover {
-  background: #1976D2;
-  border-color: #1976D2;
-}
-
-.tutorial-navigation {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-/* Tutorial Layout */
-.tutorial-container-wrapper {
-  max-width: 1400px;
-  margin: 2rem auto 0 auto;
-}
-
-.tutorial-global-header {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.tutorial-global-header h2 {
-  color: #2c3e50;
-  margin: 0 0 1.5rem 0;
-  font-size: 1.8rem;
-  font-weight: 600;
-}
-
-.tutorial-container {
-  display: flex;
-  gap: 2rem;
-  align-items: flex-start;
-  min-height: 600px;
-}
-
-.tutorial-content-panel {
-  flex: 1;
-  min-width: 0;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  max-width: calc(100% - 600px); /* Updated for 550px algorithm panel + gap */
-}
-
-.tutorial-header {
-  text-align: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.tutorial-header h2 {
-  color: #2c3e50;
-  margin: 0 0 1rem 0;
-  font-size: 1.4rem;
-  font-weight: 600;
-}
-
-.algorithm-panel {
-  flex: 0 0 550px; /* Increased to 550px (50px wider) */
-  background: #2c3e50;
-  color: #ecf0f1;
-  padding: 1.5rem;
-  border-radius: 12px;
-  font-family: 'Courier New', monospace;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-  height: fit-content;
-  position: sticky;
-  top: 2rem;
-  min-height: 400px;
-}
-
-.algorithm-panel h3 {
-  color: #3498db;
-  text-align: center;
-  margin: 0 0 1.5rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.algorithm-content {
-  background: #34495e;
-  padding: 1.5rem;
-  border-radius: 8px;
-  line-height: 1.8;
-  font-size: 13px;
-}
-
-/* Enhanced Tutorial Highlighting System */
-.part-1-highlight-active {
-  background: #3498db !important;
-  color: #ffffff !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
-}
-
-.part-2-highlight-active {
-  background: #f39c12 !important;
-  color: #2c3e50 !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
-}
-
-.part-2-alt-highlight-active {
-  background: #1ff0e9 !important;
-  color: #000000 !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 8px rgba(241, 196, 15, 0.6);
-}
-
-.part-3-highlight-active {
-  background: #9b59b6 !important;
-  color: #ffffff !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
-}
-
-.part-4-highlight-active {
-  background: #17a2b8 !important;
-  color: #ffffff !important;
-  padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(23, 162, 184, 0.5);
-}
-
-/* Mathematical term visibility control */
-.math-complete-only {
-  display: none;
-}
-
-.math-simple-only {
-  display: inline;
-}
-
-body.tutorial-part-4 .math-complete-only,
-body.playground-mode .math-complete-only {
-  display: inline;
-}
-
-body.tutorial-part-4 .math-simple-only,
-body.playground-mode .math-simple-only {
-  display: none;
-}
-
-/* Introduction Mode Styles */
-.introduction-section {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-
-.introduction-content {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 3rem 2rem;
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-  max-width: 800px;
-  margin: 0 auto 2rem auto;
-  backdrop-filter: blur(10px);
-}
-
-.introduction-content h2 {
-  color: #2c3e50;
-  margin: 0 0 1.5rem 0;
-  font-size: 2rem;
-  font-weight: 600;
-}
-
-.introduction-content p {
-  color: #555;
-  font-size: 1.1rem;
-  line-height: 1.7;
-  margin-bottom: 1.5rem;
-}
-
-/* Mode visibility classes */
-.introduction-only { display: block; }
-.tutorial-only { display: none; }
-.playground-only { display: none; }
-
-/* Introduction mode - show both introduction-only and tutorial-only elements */
-body:not(.tutorial-mode):not(.playground-mode) .introduction-only { display: block; }
-body:not(.tutorial-mode):not(.playground-mode) .tutorial-only { display: block; }
-
-/* Tutorial mode */
-body.tutorial-mode .introduction-only { display: none; }
-body.tutorial-mode .tutorial-only { display: block; }
-body.tutorial-mode .playground-only { display: none; }
-
-/* Playground mode */
-body.playground-mode .introduction-only { display: none; }
-body.playground-mode .tutorial-only { display: none; }
-body.playground-mode .playground-only { display: block; }
-
-/* Tutorial part-specific visibility */
-.tutorial-part-1-only { display: none; }
-.tutorial-part-2-plus { display: none; }
-.tutorial-part-3-plus { display: none; }
-.tutorial-part-2-only { display: none; }
-
-body.tutorial-part-1 .tutorial-part-1-only { display: block; }
-body.tutorial-part-2 .tutorial-part-2-plus,
-body.tutorial-part-3 .tutorial-part-2-plus,
-body.tutorial-part-4 .tutorial-part-2-plus { display: block; }
-body.tutorial-part-3 .tutorial-part-3-plus,
-body.tutorial-part-4 .tutorial-part-3-plus { display: block; }
-body.tutorial-part-2 .tutorial-part-2-only { display: block; }
-
-/* Explicitly hide tutorial settings in parts 1, 3, and 4 */
-body.tutorial-part-1 .tutorial-part-2-only,
-body.tutorial-part-3 .tutorial-part-2-only,
-body.tutorial-part-4 .tutorial-part-2-only {
-  display: none !important;
-}
-
-/* Hide canvas and controls for tutorial part 4 */
-body.tutorial-part-4 .main-layout {
-  display: none !important;
-}
-
-/* Manual controls visibility - only part 1 */
-body.tutorial-part-2 .collapsible-section.tutorial-only.playground-only,
-body.tutorial-part-3 .collapsible-section.tutorial-only.playground-only,
-body.tutorial-part-4 .collapsible-section.tutorial-only.playground-only {
-  display: none !important;
-}
-
-/* Force manual controls to be visible in tutorial part 1 only */
-body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only {
-  display: block !important;
-  visibility: visible !important;
-}
-
-body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only .collapsible-content {
-  display: block !important;
-}
-
-body.tutorial-part-1 .collapsible-section.tutorial-only.playground-only .collapsible-toggle {
-  transform: rotate(180deg);
-}
-
-/* Manual controls hidden in parts 2, 3, and 4 */
-body.tutorial-part-2 .collapsible-section.tutorial-only.playground-only,
-body.tutorial-part-3 .collapsible-section.tutorial-only.playground-only,
-body.tutorial-part-4 .collapsible-section.tutorial-only.playground-only {
-  display: none !important;
-}
-
-/* Responsive Tutorial Layout */
-@media (max-width: 1200px) {
-  .tutorial-container-wrapper {
-    max-width: 100% !important;
-    margin: 1rem !important;
-  }
-  
-  .tutorial-global-header {
-    margin-bottom: 1rem !important;
-    padding: 1.5rem !important;
-  }
-  
-  .tutorial-global-header h2 {
-    font-size: 1.4rem !important;
-  }
-  
-  .tutorial-container {
-    flex-direction: column !important;
-    gap: 1.5rem !important;
-    max-width: 100% !important;
-  }
-  
-  .tutorial-content-panel {
-    max-width: 100% !important;
-  }
-  
-  .algorithm-panel {
-    flex: none !important;
-    position: relative !important;
-    top: auto !important;
-    order: -1; /* Show algorithm first on mobile */
-    width: 100%;
-    max-width: 100%;
-  }
-}
-
-/* Force horizontal layout on larger screens */
-@media (min-width: 1201px) {
-  .tutorial-container {
-    display: flex !important;
-    flex-direction: row !important;
-  }
-  
-  .tutorial-content-panel {
-    flex: 1 !important;
-    max-width: calc(100% - 600px) !important; /* Updated for 550px algorithm panel + gap */
-  }
-  
-  .algorithm-panel {
-    flex: 0 0 550px !important; /* Updated to 550px */
-    position: sticky !important;
-    top: 2rem !important;
-  }
-}
-/* Actions panel for both introduction and tutorial modes */
-.non-playground-actions {
-  display: flex;
-}
-
-body.playground-mode .non-playground-actions {
-  display: none;
-}
+    /* Pulse animation for step-by-step next button */
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    /* Tutorial part-specific visibility */
+    .tutorial-part-1-only {
+      display: none;
+    }
+    
+    .tutorial-part-1 .tutorial-part-1-only {
+      display: block;
+    }
+    
+    /* Explicitly hide part-1-only elements in other parts */
+    body.tutorial-part-2 .tutorial-part-1-only,
+    body.tutorial-part-3 .tutorial-part-1-only,
+    body.tutorial-part-4 .tutorial-part-1-only {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -1162,10 +90,10 @@ body.playground-mode .non-playground-actions {
             <p>
                 The green square below is your <b>agent</b>. Each tile the agent can go to is a <b>state</b>. The agent can take <b>actions</b> 
                 that determine which state it goes to next. Try drawing a path and moving the agent around using the actions
-                 (up, down, left, right). You’ll see in the bottom left which state the agent is at.  
+                 (up, down, left, right). You'll see in the bottom left which state the agent is at.  
             </p>
-            <p>If the agent reaches the goal (the purple square), then it gets 100 <b>reward</b>. Or in other words, 
-                goal states – states where the agent is at the goal –, have 100 reward. Every other state that isn’t at the goal has 0 reward.</p>
+            <p>If the agent reaches the goal (the purple square), then it gets 10 <b>reward</b>. Or in other words, 
+                goal states – states where the agent is at the goal –, have 10 reward. Every other state that isn't at the goal has 0 reward.</p>
           </div>
 
           <div class="tutorial-step"> 
@@ -1203,45 +131,45 @@ body.playground-mode .non-playground-actions {
         <div id="tutorial-part-2" class="tutorial-part" style="display: none;">
           <div class="tutorial-step">
             <h3>Time to get Technical</h3>
-            <p>We just learned about states, value, actions, and reward. Let’s look at some of the technical ways the pros talk about these things 😎</p>
+            <p>We just learned about states, value, actions, and reward. Let's look at some of the technical ways the pros talk about these things 😎</p>
             <p><b>States:</b> The current state is often referred to simply as <b>s</b>, and the next state is <b>s'</b>.
-                 Every single possible state is referred to as the state-space, or <b>S</b> (yes the uppercase is important). Importantly, s and s’ are variables. 
-                 They’re used to talk about what to do at some specific state in general. 
-                 For example, you could say “for any s, take the action that brings you to the s’ with the highest value”. 
+                 Every single possible state is referred to as the state-space, or <b>S</b> (yes the uppercase is important). Importantly, s and s' are variables. 
+                 They're used to talk about what to do at some specific state in general. 
+                 For example, you could say "for any s, take the action that brings you to the s' with the highest value". 
             </p>
             <p>
                 <b>Actions:</b> An action variable is <b>a</b>. The set of all actions that can be taken at some specific state is <b>A(s)></b>. 
-                Some states, don’t allow for some actions, like trying to go down while already at the bottom of the screen. 
+                Some states, don't allow for some actions, like trying to go down while already at the bottom of the screen. 
             </p>
             <p>
                 <b>Reward: </b><i>Technically</i> what is meant by "state s has reward x", is actually saying that there is a reward function, <b>r</b>, and r(s) = x.  
             </p>
             <p>
-                <b>Value: </b>Similar to reward, value is also actually a function. We can refer to the value of a state as v(s), or a next state, v(s’). 
+                <b>Value: </b>Similar to reward, value is also actually a function. We can refer to the value of a state as v(s), or a next state, v(s'). 
                  Unlike the reward function, we aren't given the correct value function at the start. The whole point of Value Iteration 
                  is to learn the correct value function when all we have is the reward function. 
             </p>
             <p>We can refer to the current value function as V, 
                 which is meant to refer to how there is a whole function that can take in any state and output a value. 
                  So casually, the way this algorithm works is by starting out with a bad value function V, then some calculations and updates are made,
-                  and we then create a new value function, V’.  Then we make V’ the new V and update things again. 
-                We keep improving the value function until the improvements between V and V’ are so small that V can barely improve anymore.
+                  and we then create a new value function, V'.  Then we make V' the new V and update things again. 
+                We keep improving the value function until the improvements between V and V' are so small that V can barely improve anymore.
             </p>
           </div>
         
           <div class="tutorial-step">
             <h3><span data-highlight-part="2">Iteratively Improving the Value Function</span></h3>
-            <p>With our technical terms done we can start deciphering the algorithm on the right. First let’s understand the orange part. These lines are all about how we start with a bad value function V, get a better one V’, and then have V’ become V and start the process over again. </p>
+            <p>With our technical terms done we can start deciphering the algorithm on the right. First let's understand the orange part. These lines are all about how we start with a bad value function V, get a better one V', and then have V' become V and start the process over again. </p>
 
-<p><b>Line 1:</b> We start with an inaccurate value function that’s randomly initialized, or just assigns a value to zero to each state.</p>
+<p><b>Line 1:</b> We start with an inaccurate value function that's randomly initialized, or just assigns a value to zero to each state.</p>
 
 <p><b>Lines 2 & 8:</b> Line 2 starts a loop, meaning that everything that happens beneath it keeps happening over and over again until the condition on line 8 is met. The specifics of line 8 and how the loop stops are in the next text blurb. But for now just know that everything in between lines 2 and 8 happen multiple times. We can also see that line 2 and 8 are on the same level of indentation. This is a means of signalling that line 8 is what has the power to stop the loop started on line 2. </p>
 
 <p><b>Line 4:</b> Line 4 starts another loop. What line 4 is saying is that we are going to go through every single state, and then use it to do stuff on lines 5 and 6 (because lines 5 and 6 are indented below line 4. So we have a loop started on line 2, and then another loop started on line 4. The reason for this is because for value iteration to work, we need to loop through every single state (as per line 4), and we are going to need to loop through every single state <i>multiple times</i> (as per line 2).</p>
 
-<p><b>Line 5:</b> So we’re going through each state (as per line 4). We have our current bad value function V that will give us the wrong value for whatever state we’re at, v(s). Line 5 is about how we go state by state and find a more accurate value for it – v’(s). (Once we’ve gotten v’(s) for every single state, we have a whole new value function V’, which we hope is superior to the current value function V). How v’(s) is calculated is in tutorial part 3. </p>
+<p><b>Line 5:</b> So we're going through each state (as per line 4). We have our current bad value function V that will give us the wrong value for whatever state we're at, v(s). Line 5 is about how we go state by state and find a more accurate value for it – v'(s). (Once we've gotten v'(s) for every single state, we have a whole new value function V', which we hope is superior to the current value function V). How v'(s) is calculated is in tutorial part 3. </p>
 
-<p><b>Line 7:</b> After getting better values for every individual state, we have a whole new value function, V’. Line 7 simply says to now let V’ be the current value function V, and then if the condition on line 8 isn’t met, we start looping through every single state yet again. </p>
+<p><b>Line 7:</b> After getting better values for every individual state, we have a whole new value function, V'. Line 7 simply says to now let V' be the current value function V, and then if the condition on line 8 isn't met, we start looping through every single state yet again. </p>
           </div>
           
 
@@ -1250,19 +178,19 @@ body.playground-mode .non-playground-actions {
 
         <div class="tutorial-step">
             <h3><span data-highlight-part="2-alt">How we Stop</span></h3>
-            <p>Casually, the way we stop is by checking if the difference between V and V’ is small. Are any improvements to the value function barely any better, or even resulting in no new improvements at all? At that point, we stop and now have a good value function. So in order to do this, we need to track the difference between V and V’. We do so by tracking the largest difference that V gives for a state and V’ gives for a state. </p>
+            <p>Casually, the way we stop is by checking if the difference between V and V' is small. Are any improvements to the value function barely any better, or even resulting in no new improvements at all? At that point, we stop and now have a good value function. So in order to do this, we need to track the difference between V and V'. We do so by tracking the largest difference that V gives for a state and V' gives for a state. </p>
 
-            <p><b>Line 3:</b> Line 3 initializes a variable, delta, to be zero. This is the variable that’s going to track the biggest change between V and V’. </p>
+            <p><b>Line 3:</b> Line 3 initializes a variable, delta, to be zero. This is the variable that's going to track the biggest change between V and V'. </p>
 
-            <p><b>Line 6:</b> We just calculated a new value for some state, v(s’) on line 5. Line 6 is a way of keeping the delta to be the biggest (absolute) difference between v(s) and v(s’). This line might be easiest to understand by just carefully looking it over and thinking about it. </p>
+            <p><b>Line 6:</b> We just calculated a new value for some state, v(s') on line 5. Line 6 is a way of keeping the delta to be the biggest (absolute) difference between v(s) and v(s'). This line might be easiest to understand by just carefully looking it over and thinking about it. </p>
 
             <p><b>Line 8:</b> If delta is less than a small threshold value theta, we stop the whole thing.</p>
 
           </div>
         <div class="tutorial-step">
             <h3><b>See the Value Function Improve Live</b></h3>
-            <p>Click "Live Algorithm" after drawing a path and see the value of each state become more accurate!</p>
-            
+            <p>Click "Live Algorithm" after drawing a path and see the value of each state become more accurate! <b>You can click "Live Algorithm" multiple times to run additional iterations</b> and watch the value function continue to improve.</p>
+            <p>As the algorithm runs, you'll see a color-coded visualization: <b>red states have lower values</b> and <b>green states have higher values</b>. The <b>arrows show the best action</b> (direction to move) that the algorithm has determined for each state.</p>
           </div>
 
 
@@ -1274,13 +202,7 @@ body.playground-mode .non-playground-actions {
 
         <!-- Tutorial Part 3 -->
         <div id="tutorial-part-3" class="tutorial-part" style="display: none;">
-          <div class="tutorial-step">
-            <h3>Let's Watch the Value Function Improve <i>Live</i></h3>
-            <p>We haven’t gone over exactly how the value function improves yet, but we do know that we iterate through each state and then make the value function better. To see the value function improve visually, draw a path and run the “live value iteration” function. You’ll then see the green box go to each state and update it from v(s) to v’(s). Run the algorithm multiple times and see how the delta gets smaller each iteration. </p>
 
-<p>As each state is iterated, the more green a state is the higher its value, the more red a state is the lower its value. It will also leave what the current “best” action at each state is. You’ll be able to see that as the value function improves, the “best” actions become more likely to actually be the true best action.</p>
-
-          </div>
           
           <div class="tutorial-step">
             <h3><span data-highlight-part="3">How the Value Function Improves</span></h3>
@@ -1292,9 +214,9 @@ body.playground-mode .non-playground-actions {
           <div class="tutorial-step">
             <h3><b>View Things Step-by-Step</b></h3>
             <p>
-                You can now go step by step and see the whole picture of what’s going on in this algorithm at the closest level of detail. 
-                Press the step by step button and you’ll be able to see live how the right side of Line 5 is calculated. Keep clicking next to 
-                manually go through each state!
+                You can now go step by step and see the whole picture of what's going on in this algorithm at the closest level of detail. 
+                Press the step by step button and you'll be able to see live how the right side of Line 5 is calculated. <b>After clicking 
+                step-by-step, click the next button on the right of the bottom row to iterate through each state.</b>
             </p>
           </div>    
         </div>
@@ -1401,7 +323,7 @@ body.playground-mode .non-playground-actions {
           <!-- Introduction Mode Actions -->
           <div class="introduction-only">
             <div class="button-row">
-              <button onclick="runValueIterationDemo()" class="btn-primary">Solve the Maze!</button>
+              <button onclick="runValueIterationDemo()" class="btn-primary">Run Algorithm</button>
             </div>
             <div class="button-row">
               <button onclick="followOptimalPath()" id="follow-path-btn" class="btn-secondary" style="display: none;">🎯 Follow Path</button>
@@ -1455,7 +377,10 @@ body.playground-mode .non-playground-actions {
             <ul><li>Click "reset agent" if the green square gets stuck in an inifinite loop.</li>
             <li>
                 Click "reset all" to try a new path.
-            </li></ul>
+            </li>
+        <li>
+            You can change the size of the maze by selecting a larger canvas size at the top-left of the maze.
+        </li></ul>
           </div>
         </div>
 
@@ -1487,17 +412,31 @@ body.playground-mode .non-playground-actions {
           </div>
         </div>
 
+        <!-- Keyboard Controls Tip (Tutorial Part 1 only) -->
+        <div class="sidebar-section tutorial-only tutorial-part-1-only">
+          <div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 12px; margin-top: 0.5rem;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #1976d2;">💡 Pro Tip</h4>
+            <p style="margin: 0; font-size: 13px; color: #424242; line-height: 1.4;">
+              You can also use your <strong>keyboard arrow keys</strong> to move the agent around the canvas!
+            </p>
+          </div>
+        </div>
+
         <!-- Tutorial Settings (Part 2 only) -->
-        <div class="collapsible-section tutorial-only tutorial-part-2-only">
+        <div class="collapsible-section tutorial-only">
           <div class="collapsible-header" onclick="toggleCollapsible(this)">
             <h3>Live Animation Settings</h3>
             <span class="collapsible-toggle">▼</span>
           </div>
-          <div class="collapsible-content">
+          <div class="collapsible-content expanded" style="display: block;">
             <div class="input-group">
-              <label>Speed:</label>
-              <input id="tutorialDelayMs" type="number" value="200" min="50" max="1000">
-              <span style="font-size: 10px; color: #666;">ms</span>
+              <label>Animation Speed:</label>
+              <input id="tutorialDelayMs" type="range" min="1" max="200" value="50" oninput="updateSpeedDisplay(this.value)">
+              <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-top: 2px;">
+                <span>Faster</span>
+                <span id="speedValue">50ms</span>
+                <span>Slower</span>
+              </div>
             </div>
             <div class="input-group">
               <label>Iterations:</label>
@@ -1564,7 +503,7 @@ body.playground-mode .non-playground-actions {
             <!-- Status Info -->
             <div class="status-info">
             <div id="agentPositionCompact" class="agent-status-compact">
-                Agent: (60, 540)
+                State: (60, 540)
             </div>
             <div id="currentRewardCompact" class="agent-status-compact">
                 Reward: 0
@@ -1586,7 +525,7 @@ body.playground-mode .non-playground-actions {
           
           <!-- Right: Next Step Button (Outside) -->
           <div id="stepByStepNextContainer" style="display: none;">
-            <button onclick="nextStepClick()" class="btn-mini btn-primary">▶️ Next</button>
+            <button onclick="nextStepClick()" class="btn-mini btn-primary" style="background: #ff5722; border: 2px solid #d84315; font-weight: bold; font-size: 14px; padding: 8px 16px; box-shadow: 0 2px 8px rgba(255, 87, 34, 0.3); animation: pulse 2s infinite;">▶️ Next Step</button>
           </div>
         </div>
 
@@ -1616,12 +555,12 @@ body.playground-mode .non-playground-actions {
             <div class="input-group">
               <label>Reward Function:</label>
               <select id="rewardFunction" onchange="updateParameterDisplays()">
-                <option value="zero">Zero reward</option>
+                <option value="zero">Goal Only</option>
                 <option value="negative_distance">Negative distance</option>
               </select>
             </div>
             <div class="input-group">
-              <label>Animation Delay (ms):</label>
+              <label>Live Animation Delay (ms):</label>
               <input id="delayMs" type="number" value="120" min="10" max="2000">
             </div>
             <div class="input-group">
@@ -1641,6 +580,14 @@ body.playground-mode .non-playground-actions {
     let originalFollowValuePolicy;
     let originalFollowOptimalPath;
 
+    // Function to update speed display
+    function updateSpeedDisplay(value) {
+      const speedDisplay = document.getElementById('speedValue');
+      if (speedDisplay) {
+        speedDisplay.textContent = `${value}ms`;
+      }
+    }
+    
     // Collapsible section functionality
     function toggleCollapsible(header) {
       const content = header.nextElementSibling;
@@ -1712,7 +659,7 @@ body.playground-mode .non-playground-actions {
         if (text) {
           const match = text.match(/\((\d+), (\d+)\)/);
           if (match) {
-            agentPositionCompact.textContent = `Agent: (${match[1]}, ${match[2]})`;
+            agentPositionCompact.textContent = `State: (${match[1]}, ${match[2]})`;
           }
         }
       }
@@ -1804,6 +751,28 @@ body.playground-mode .non-playground-actions {
       
       // Initialize global header for part 1
       updateGlobalTutorialHeader(1);
+      
+      // Auto-expand manual controls section
+      setTimeout(() => {
+        const manualControlsHeader = document.querySelector('.collapsible-section.tutorial-only .collapsible-header');
+        if (manualControlsHeader) {
+          const content = manualControlsHeader.nextElementSibling;
+          if (content && !content.classList.contains('expanded')) {
+            toggleCollapsible(manualControlsHeader);
+          }
+        }
+        
+        // Hide live settings initially (will be shown in part 2)
+        const liveSettingsHeaders = document.querySelectorAll('.collapsible-section.tutorial-only .collapsible-header h3');
+        liveSettingsHeaders.forEach(header => {
+          if (header.textContent.includes('Live Animation Settings')) {
+            const liveSettingsSection = header.closest('.collapsible-section');
+            if (liveSettingsSection) {
+              liveSettingsSection.style.display = 'none';
+            }
+          }
+        });
+      }, 100);
       
       // Smooth scroll to top of page
       window.scrollTo({
@@ -1901,6 +870,40 @@ body.playground-mode .non-playground-actions {
       
       // Update global header
       updateGlobalTutorialHeader(partNumber);
+      
+      // Ensure manual controls stay expanded
+      setTimeout(() => {
+        const manualControlsHeader = document.querySelector('.collapsible-section.tutorial-only .collapsible-header');
+        if (manualControlsHeader) {
+          const content = manualControlsHeader.nextElementSibling;
+          if (content && !content.classList.contains('expanded')) {
+            toggleCollapsible(manualControlsHeader);
+          }
+        }
+        
+        // Handle live animation settings visibility and expansion based on part
+        const liveSettingsHeaders = document.querySelectorAll('.collapsible-section.tutorial-only .collapsible-header h3');
+        let liveSettingsSection = null;
+        liveSettingsHeaders.forEach(header => {
+          if (header.textContent.includes('Live Animation Settings')) {
+            liveSettingsSection = header.closest('.collapsible-section');
+          }
+        });
+        if (liveSettingsSection) {
+          if (partNumber === 2) {
+            // Show and expand in part 2
+            liveSettingsSection.style.display = 'block';
+            const header = liveSettingsSection.querySelector('.collapsible-header');
+            const content = liveSettingsSection.querySelector('.collapsible-content');
+            if (header && content && !content.classList.contains('expanded')) {
+              toggleCollapsible(header);
+            }
+          } else {
+            // Hide in other parts
+            liveSettingsSection.style.display = 'none';
+          }
+        }
+      }, 100);
     };
     
     // Override switchToIntroductionMode to ensure proper cleanup
@@ -2020,28 +1023,6 @@ body.playground-mode .non-playground-actions {
         };
       }
 
-      // Auto-expand important sections (only in tutorial mode)
-      const importantSections = [
-        '.collapsible-section .collapsible-header'
-      ];
-      
-      // Only auto-expand in tutorial mode
-      if (document.body.classList.contains('tutorial-mode')) {
-        importantSections.forEach(selector => {
-          const headers = document.querySelectorAll(selector);
-          headers.forEach(header => {
-            // Only expand the first two sections by default
-            const section = header.closest('.collapsible-section');
-            const allSections = Array.from(document.querySelectorAll('.collapsible-section'));
-            const index = allSections.indexOf(section);
-            
-            if (index < 2) {
-              toggleCollapsible(header);
-            }
-          });
-        });
-      }
-      
       // Set initial canvas size dropdown and controls bar width
       updateCanvasSizeDropdown('small');
       updateControlsBarWidth('small');
